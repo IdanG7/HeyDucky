@@ -4,13 +4,16 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal
 from textual.widgets import Header, Footer, TabbedContent, TabPane
 
 from voice_debugger.config import Config
+from voice_debugger.project import detect_project_root
 from voice_debugger.widgets import (
     SourceView,
     ConversationView,
@@ -18,6 +21,7 @@ from voice_debugger.widgets import (
     VariablesView,
     CallStackView,
     DebugOutputView,
+    ProjectTree,
 )
 
 
@@ -35,6 +39,19 @@ class VoiceDebuggerApp(App):
     TabbedContent {
         height: 1fr;
     }
+
+    #source-pane {
+        height: 1fr;
+    }
+
+    #project-tree {
+        width: 1fr;
+        max-width: 40;
+    }
+
+    #source-view {
+        width: 3fr;
+    }
     """
 
     BINDINGS = [
@@ -50,7 +67,7 @@ class VoiceDebuggerApp(App):
         Binding("f11", "debug_step_into", "Step Into", show=False),
     ]
 
-    def __init__(self, target: str | None = None):
+    def __init__(self, target: str | None = None, project: str | None = None):
         super().__init__()
         self.config = Config.load()
         self._target = target
@@ -59,11 +76,21 @@ class VoiceDebuggerApp(App):
         self._dap_client = None
         self._debug_session = None
 
+        # Determine project root
+        if project:
+            self._project_root = Path(project).resolve()
+        elif target:
+            self._project_root = detect_project_root(target)
+        else:
+            self._project_root = Path.cwd()
+
     def compose(self) -> ComposeResult:
         yield Header()
         with TabbedContent(initial="conversation"):
             with TabPane("Source", id="source"):
-                yield SourceView(id="source-view")
+                with Horizontal(id="source-pane"):
+                    yield ProjectTree(self._project_root, id="project-tree")
+                    yield SourceView(id="source-view")
             with TabPane("Conversation", id="conversation"):
                 yield ConversationView(id="conversation-view")
             with TabPane("Variables", id="variables"):
@@ -80,7 +107,15 @@ class VoiceDebuggerApp(App):
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Welcome to Voice Debugger. Press Space to talk.")
         conv.add_system_message("Tabs: 1=Source 2=Chat 3=Vars 4=Stack 5=Output")
+        conv.add_system_message(f"Project: {self._project_root}")
         self._init_components()
+
+    def on_directory_tree_file_selected(
+        self, event: ProjectTree.FileSelected
+    ) -> None:
+        """Load selected file in source view."""
+        source_view = self.query_one("#source-view", SourceView)
+        source_view.load_source(str(event.path))
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""

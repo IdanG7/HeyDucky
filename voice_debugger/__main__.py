@@ -14,6 +14,10 @@ def main():
         help="Program to debug (e.g., script.py)",
     )
     parser.add_argument(
+        "--project",
+        help="Project root directory (auto-detected if not given)",
+    )
+    parser.add_argument(
         "--setup",
         action="store_true",
         help="Run first-time setup wizard",
@@ -26,7 +30,7 @@ def main():
 
     from voice_debugger.app import VoiceDebuggerApp
 
-    app = VoiceDebuggerApp(target=args.target)
+    app = VoiceDebuggerApp(target=args.target, project=args.project)
     app.run()
 
 

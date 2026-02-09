@@ -36,3 +36,20 @@ async def test_app_has_all_tabs():
         assert app.query_one("#variables-view") is not None
         assert app.query_one("#callstack-view") is not None
         assert app.query_one("#output-view") is not None
+
+
+@pytest.mark.asyncio
+async def test_app_has_project_tree():
+    """Source tab has a ProjectTree widget."""
+    app = VoiceDebuggerApp()
+    async with app.run_test():
+        tree = app.query_one("#project-tree")
+        assert tree is not None
+
+
+@pytest.mark.asyncio
+async def test_app_project_root_default():
+    """App uses cwd as project root when no target given."""
+    app = VoiceDebuggerApp()
+    async with app.run_test():
+        assert app._project_root.is_dir()
