@@ -18,8 +18,9 @@ class ToolExecutor:
     a human-readable result string that can be fed back to the AI.
     """
 
-    def __init__(self, dap_client: DAPClient) -> None:
+    def __init__(self, dap_client: DAPClient | None, project_root: str | None = None) -> None:
         self._dap = dap_client
+        self._project_root = project_root
 
     async def execute(self, tool_call: ToolCall) -> str:
         """Execute a tool call and return a human-readable result string."""
@@ -29,6 +30,11 @@ class ToolExecutor:
         handler = getattr(self, f"_exec_{name}", None)
         if handler is None:
             return f"Unknown tool: {name}"
+
+        # Git commands don't need DAP client
+        if name != "run_git_command" and self._dap is None:
+            return f"No debug session active. Cannot execute {name}."
+
         return await handler(args)
 
     # ------------------------------------------------------------------
@@ -118,3 +124,17 @@ class ToolExecutor:
             return "\n".join(snippet)
         except OSError as e:
             return f"Could not read {file_path}: {e}"
+
+    # ------------------------------------------------------------------
+    # Git commands
+    # ------------------------------------------------------------------
+
+    async def _exec_run_git_command(self, args: dict) -> str:
+        if not self._project_root:
+            return "No project root configured. Cannot run git commands."
+        from voice_debugger.git_executor import GitExecutor, GitCommandBlocked
+        executor = GitExecutor(self._project_root)
+        try:
+            return executor.run(args["command"])
+        except GitCommandBlocked as e:
+            return f"Blocked: {e}"

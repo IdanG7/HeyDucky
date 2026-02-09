@@ -18,6 +18,13 @@ HOW YOU DEBUG:
 - Challenge bad assumptions
 - Suggest concrete fixes, not generic advice
 
+GIT WORKFLOW:
+- Use run_git_command for version control tasks
+- Always check 'status' before committing
+- Write clear, concise commit messages
+- You can: status, diff, log, add, commit, branch, stash, blame
+- You CANNOT: push, reset, clean, rebase (tell user to do these manually)
+
 CRITICAL RULES:
 - NEVER say "I'm an AI" or "as an AI assistant"
 - Don't apologize excessively
@@ -31,20 +38,22 @@ Available debugger functions (use naturally, don't announce):
 - continue_execution()
 - evaluate_expression(expr)
 - get_call_stack()
+- read_source(file, line, context?)
+- run_git_command(command)
 """
 
 _REPLACEMENTS = {
-    "Certainly!": "",
-    "Certainly,": "",
+    "Certainly": "",
     "I shall": "I'll",
     "cannot": "can't",
     "do not": "don't",
     "does not": "doesn't",
     "Let us": "Let's",
     "I am": "I'm",
+    "I would": "I'd",
+    "I will": "I'll",
     "As an AI": "",
     "as an AI assistant": "",
-    "I cannot actually": "I can't",
 }
 
 

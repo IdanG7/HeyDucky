@@ -128,6 +128,14 @@ class VoiceDebuggerApp(App):
 
             provider = ClaudeProvider(api_key=api_key, model=self.config.ai_model)
             self._orchestrator = Orchestrator(provider=provider)
+
+            # Set up git-only tool executor if no debug session
+            if not self._target:
+                from voice_debugger.debugger.tool_executor import ToolExecutor
+                self._orchestrator._tool_executor = ToolExecutor(
+                    dap_client=None,
+                    project_root=str(self._project_root),
+                )
         else:
             conv = self.query_one("#conversation-view", ConversationView)
             conv.add_system_message(
@@ -266,7 +274,10 @@ class VoiceDebuggerApp(App):
 
             # Connect tool executor to orchestrator
             if self._orchestrator and self._debug_session.client:
-                executor = ToolExecutor(self._debug_session.client)
+                executor = ToolExecutor(
+                    self._debug_session.client,
+                    project_root=str(self._project_root),
+                )
                 self._orchestrator._tool_executor = executor
 
             # Also expose the DAP client for keybinding actions

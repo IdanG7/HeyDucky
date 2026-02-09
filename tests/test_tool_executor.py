@@ -203,3 +203,37 @@ async def test_execute_set_breakpoint_failure(mock_dap):
     )
     assert "failed" in result.lower()
     assert "File not found" in result
+
+
+@pytest.mark.asyncio
+async def test_execute_git_status(mock_dap, tmp_path):
+    """ToolExecutor handles run_git_command for git status."""
+    import subprocess
+    subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
+
+    executor = ToolExecutor(mock_dap, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="g1", name="run_git_command", arguments={"command": "status"})
+    )
+    assert isinstance(result, str)
+    assert "branch" in result.lower() or "nothing" in result.lower() or "no commits" in result.lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_git_push_blocked(mock_dap, tmp_path):
+    """ToolExecutor blocks dangerous git commands."""
+    executor = ToolExecutor(mock_dap, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="g2", name="run_git_command", arguments={"command": "push origin main"})
+    )
+    assert "blocked" in result.lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_git_no_project_root(mock_dap):
+    """ToolExecutor without project_root returns error for git commands."""
+    executor = ToolExecutor(mock_dap)
+    result = await executor.execute(
+        ToolCall(id="g3", name="run_git_command", arguments={"command": "status"})
+    )
+    assert "no project" in result.lower()

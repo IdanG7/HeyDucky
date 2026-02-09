@@ -86,4 +86,18 @@ DEBUGGER_TOOLS = [
             "required": ["file", "line"],
         },
     },
+    {
+        "name": "run_git_command",
+        "description": "Execute a git command in the project directory. Use for: status, diff, log, show, branch, add, commit, stash, blame. BLOCKED: push, reset, clean, rebase. Always check 'status' before committing.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "Git subcommand and arguments (e.g., 'status', 'diff --staged', 'log --oneline -5', 'commit -m \"fix null check\"')",
+                },
+            },
+            "required": ["command"],
+        },
+    },
 ]
