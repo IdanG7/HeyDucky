@@ -84,3 +84,36 @@ def test_orchestrator_reset(mock_provider):
     assert orch._history == []
     assert orch.total_input_tokens == 0
     assert orch.total_cost == 0
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_executes_tool_calls(mock_provider):
+    """Orchestrator executes tool calls and feeds results back."""
+    # First response has a tool call
+    tool_response = AIResponse(
+        text="Let me check.",
+        tool_calls=[ToolCall(id="t1", name="inspect_variable", arguments={"name": "x"})],
+        input_tokens=30,
+        output_tokens=15,
+    )
+    # Second response is the final answer (after tool result)
+    final_response = AIResponse(
+        text="x is 42.",
+        tool_calls=[],
+        input_tokens=40,
+        output_tokens=10,
+    )
+    mock_provider.send_message = AsyncMock(side_effect=[tool_response, final_response])
+
+    mock_executor = AsyncMock()
+    mock_executor.execute = AsyncMock(return_value="x = 42 (int)")
+
+    orch = Orchestrator(provider=mock_provider, tool_executor=mock_executor)
+    resp = await orch.chat("What is x?")
+
+    # Should have called the tool executor
+    mock_executor.execute.assert_called_once()
+    # Final response should be the one after tool results
+    assert resp.text == "x is 42."
+    # Provider should have been called twice (initial + after tool result)
+    assert mock_provider.send_message.call_count == 2
