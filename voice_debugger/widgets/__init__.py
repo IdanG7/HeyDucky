@@ -7,6 +7,7 @@ from voice_debugger.widgets.status_bar import VoiceStatusBar
 from voice_debugger.widgets.variables import VariablesView
 from voice_debugger.widgets.call_stack import CallStackView
 from voice_debugger.widgets.debug_output import DebugOutputView
+from voice_debugger.widgets.project_tree import ProjectTree
 
 __all__ = [
     "SourceView",
@@ -15,4 +16,5 @@ __all__ = [
     "VariablesView",
     "CallStackView",
     "DebugOutputView",
+    "ProjectTree",
 ]
