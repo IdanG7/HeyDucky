@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voice-debugger"
+version = "0.1.0"
+description = "Voice-controlled AI debugging assistant"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.50.0",
+    "rich>=13.7.0",
+    "faster-whisper>=1.0.0",
+    "sounddevice>=0.4.6",
+    "numpy>=1.26.0",
+    "anthropic>=0.40.0",
+    "toml>=0.10.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+voice-debugger = "voice_debugger.__main__:main"
