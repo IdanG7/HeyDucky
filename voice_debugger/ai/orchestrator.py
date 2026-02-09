@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from voice_debugger.ai.provider import AIProvider, AIResponse, COST_PER_TOKEN
+from voice_debugger.ai.provider import AIProvider, AIResponse
 from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
 from voice_debugger.ai.functions import DEBUGGER_TOOLS
 
@@ -31,7 +31,21 @@ class Orchestrator:
         response.text = humanize_response(response.text)
 
         # Add assistant response to history
-        self._history.append({"role": "assistant", "content": response.text})
+        if response.tool_calls:
+            # Store full content blocks for tool-use round-trips
+            content = []
+            if response.text:
+                content.append({"type": "text", "text": response.text})
+            for tc in response.tool_calls:
+                content.append({
+                    "type": "tool_use",
+                    "id": tc.id,
+                    "name": tc.name,
+                    "input": tc.arguments,
+                })
+            self._history.append({"role": "assistant", "content": content})
+        else:
+            self._history.append({"role": "assistant", "content": response.text})
 
         # Track usage
         self.total_input_tokens += response.input_tokens

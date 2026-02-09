@@ -13,16 +13,6 @@ def main():
         action="store_true",
         help="Run first-time setup wizard",
     )
-    parser.add_argument(
-        "--provider",
-        choices=["claude"],
-        default="claude",
-        help="AI provider to use",
-    )
-    parser.add_argument(
-        "--model",
-        help="Specific model to use",
-    )
     args = parser.parse_args()
 
     if args.setup:

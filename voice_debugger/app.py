@@ -10,7 +10,6 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
 from textual.widgets import Header, Footer
-from textual.worker import Worker, get_current_worker
 
 from voice_debugger.config import Config
 from voice_debugger.widgets import SourceView, ConversationView, VoiceStatusBar
@@ -146,11 +145,7 @@ class VoiceDebuggerApp(App):
             return
 
         import asyncio
-        loop = asyncio.new_event_loop()
-        try:
-            response = loop.run_until_complete(self._orchestrator.chat(transcript))
-        finally:
-            loop.close()
+        response = asyncio.run(self._orchestrator.chat(transcript))
 
         # Show tool calls if any
         for tc in response.tool_calls:
