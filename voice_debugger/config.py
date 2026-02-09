@@ -20,6 +20,9 @@ class Config:
     ai_provider: str = "claude"
     ai_model: str = "claude-sonnet-4-5-20250929"
     api_key: str = ""
+    compaction_enabled: bool = True
+    compaction_threshold: int = 100_000
+    max_compactions: int = 5
 
     # Voice settings
     whisper_model: str = "base.en"
@@ -36,6 +39,9 @@ class Config:
             ai_provider=ai.get("provider", "claude"),
             ai_model=ai.get("model", "claude-sonnet-4-5-20250929"),
             api_key=ai.get("api_key", ""),
+            compaction_enabled=ai.get("compaction_enabled", True),
+            compaction_threshold=ai.get("compaction_threshold", 100_000),
+            max_compactions=ai.get("max_compactions", 5),
             whisper_model=voice.get("whisper_model", "base.en"),
             sample_rate=voice.get("sample_rate", 16000),
             silence_threshold=voice.get("silence_threshold", 0.02),
@@ -49,6 +55,9 @@ class Config:
                 "provider": self.ai_provider,
                 "model": self.ai_model,
                 "api_key": self.api_key,
+                "compaction_enabled": self.compaction_enabled,
+                "compaction_threshold": self.compaction_threshold,
+                "max_compactions": self.max_compactions,
             },
             "voice": {
                 "whisper_model": self.whisper_model,
