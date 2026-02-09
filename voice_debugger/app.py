@@ -10,7 +10,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Header, Footer, TabbedContent, TabPane
+from textual.widgets import Header, Footer, TabbedContent, TabPane, Input
 
 from voice_debugger.config import Config
 from voice_debugger.project import detect_project_root
@@ -62,6 +62,8 @@ class VoiceDebuggerApp(App):
         Binding("3", "show_tab('variables')", "Vars", show=False),
         Binding("4", "show_tab('callstack')", "Stack", show=False),
         Binding("5", "show_tab('output')", "Output", show=False),
+        Binding("t", "toggle_tree_focus", "Tree", show=False),
+        Binding("o", "open_project", "Open", show=False),
         Binding("f5", "debug_continue", "Continue", show=False),
         Binding("f10", "debug_step_over", "Step Over", show=False),
         Binding("f11", "debug_step_into", "Step Into", show=False),
@@ -106,7 +108,10 @@ class VoiceDebuggerApp(App):
         """Initialize components after mount."""
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Welcome to Voice Debugger. Press Space to talk.")
-        conv.add_system_message("Tabs: 1=Source 2=Chat 3=Vars 4=Stack 5=Output")
+        conv.add_system_message(
+            "Tabs: 1=Source 2=Chat 3=Vars 4=Stack 5=Output | "
+            "t=Tree focus | o=Open project"
+        )
         conv.add_system_message(f"Project: {self._project_root}")
         self._init_components()
 
@@ -116,6 +121,67 @@ class VoiceDebuggerApp(App):
         """Load selected file in source view."""
         source_view = self.query_one("#source-view", SourceView)
         source_view.load_source(str(event.path))
+
+    def action_toggle_tree_focus(self) -> None:
+        """Toggle focus between file tree and source view."""
+        # Switch to source tab first if not there
+        self.query_one(TabbedContent).active = "source"
+        tree = self.query_one("#project-tree", ProjectTree)
+        source = self.query_one("#source-view", SourceView)
+        if tree.has_focus:
+            source.focus()
+        else:
+            tree.focus()
+
+    def action_open_project(self) -> None:
+        """Prompt for a project folder path and switch to it."""
+        conv = self.query_one("#conversation-view", ConversationView)
+        # Switch to conversation tab to show the input
+        self.query_one(TabbedContent).active = "conversation"
+        conv.add_system_message(
+            f"Current project: {self._project_root}\n"
+            "Type a new folder path below and press Enter (or Escape to cancel):"
+        )
+        # Mount an input widget inside the conversation tab
+        input_widget = Input(
+            placeholder="Enter project folder path...",
+            id="project-path-input",
+        )
+        conv.mount(input_widget)
+        input_widget.focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle submitted project path from the input widget."""
+        if event.input.id != "project-path-input":
+            return
+        path_str = event.value.strip()
+        event.input.remove()
+
+        conv = self.query_one("#conversation-view", ConversationView)
+
+        if not path_str:
+            conv.add_system_message("Cancelled.")
+            return
+
+        new_root = Path(path_str).expanduser().resolve()
+        if not new_root.is_dir():
+            conv.add_system_message(f"Not a valid directory: {new_root}")
+            return
+
+        self._project_root = new_root
+        conv.add_system_message(f"Project changed to: {self._project_root}")
+
+        # Replace the tree widget with a new one pointing at the new root
+        old_tree = self.query_one("#project-tree", ProjectTree)
+        new_tree = ProjectTree(self._project_root, id="project-tree")
+        old_tree.replace(new_tree)
+
+        # Update git tool executor project root if it exists
+        if self._orchestrator and self._orchestrator._tool_executor:
+            self._orchestrator._tool_executor._project_root = str(self._project_root)
+
+        # Switch to source tab to show the new tree
+        self.query_one(TabbedContent).active = "source"
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
