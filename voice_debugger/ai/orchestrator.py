@@ -11,21 +11,47 @@ from voice_debugger.ai.functions import DEBUGGER_TOOLS
 if TYPE_CHECKING:
     from voice_debugger.debugger.tool_executor import ToolExecutor
 
+COMPACTION_PROMPT = """\
+Summarize this debugging conversation concisely. Preserve:
+1) Files being debugged and breakpoint positions
+2) Variables and their values that were discussed
+3) Bugs identified and fixes applied or suggested
+4) User preferences and constraints mentioned
+5) Next steps the user wanted to take
+6) Any git operations performed
+
+Format as a concise paragraph. Do NOT use bullet points.
+"""
+
 
 class Orchestrator:
     """Manages conversation with AI provider."""
 
-    def __init__(self, provider: AIProvider, tool_executor: ToolExecutor | None = None):
+    def __init__(
+        self,
+        provider: AIProvider,
+        tool_executor: ToolExecutor | None = None,
+        compaction_enabled: bool = True,
+        compaction_threshold: int = 100_000,
+        max_compactions: int = 5,
+    ):
         self._provider = provider
         self._tool_executor = tool_executor
         self._history: list[dict] = []
         self.total_input_tokens: int = 0
         self.total_output_tokens: int = 0
         self.total_cost: float = 0.0
+        self._compaction_enabled = compaction_enabled
+        self._compaction_threshold = compaction_threshold
+        self._max_compactions = max_compactions
+        self.compaction_count: int = 0
+        self._on_compaction: callable | None = None
 
     async def chat(self, user_message: str) -> AIResponse:
         """Send a user message and get AI response, executing tool calls if needed."""
         self._history.append({"role": "user", "content": user_message})
+
+        await self._compact_if_needed()
 
         # Loop to handle tool calls
         max_rounds = 5
@@ -73,6 +99,67 @@ class Orchestrator:
 
         return response  # Safety: return last response if max rounds hit
 
+    async def _compact_if_needed(self) -> None:
+        """Compact conversation history if token count exceeds threshold."""
+        if not self._compaction_enabled:
+            return
+        if len(self._history) < 4:
+            return
+        if self.compaction_count >= self._max_compactions:
+            return
+
+        try:
+            token_count = await self._provider.count_tokens(
+                messages=self._history,
+                system=DEBUGGER_SYSTEM_PROMPT,
+                tools=DEBUGGER_TOOLS,
+            )
+        except Exception:
+            return
+
+        if token_count < self._compaction_threshold:
+            return
+
+        # Preserve last 3 messages (prev user, prev assistant, new user)
+        preserved = (
+            self._history[-3:]
+            if len(self._history) >= 3
+            else self._history[:]
+        )
+        to_compact = (
+            self._history[:-3]
+            if len(self._history) > 3
+            else self._history[:]
+        )
+
+        if not to_compact:
+            return
+
+        summary_response = await self._provider.send_message(
+            messages=to_compact
+            + [{"role": "user", "content": COMPACTION_PROMPT}],
+            system="You are a conversation summarizer. Be concise and thorough.",
+        )
+        self._track_usage(summary_response)
+
+        summary_text = summary_response.text
+
+        self._history = [
+            {
+                "role": "user",
+                "content": f"[Previous conversation summary]: {summary_text}",
+            },
+            {
+                "role": "assistant",
+                "content": "Got it, I have the context. Let's continue.",
+            },
+        ] + preserved
+
+        self.compaction_count += 1
+
+        if self._on_compaction:
+            self._on_compaction(self.compaction_count, token_count)
+
     def _track_usage(self, response: AIResponse) -> None:
         """Track token usage and cost."""
         self.total_input_tokens += response.input_tokens
@@ -98,3 +185,4 @@ class Orchestrator:
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.total_cost = 0.0
+        self.compaction_count = 0

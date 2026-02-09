@@ -19,6 +19,7 @@ def mock_provider():
         )
     )
     provider.model_name.return_value = "claude-sonnet-4-5-20250929"
+    provider.count_tokens = AsyncMock(return_value=0)
     return provider
 
 
@@ -116,3 +117,110 @@ async def test_orchestrator_executes_tool_calls(mock_provider):
     assert resp.text == "x is 42."
     # Provider should have been called twice (initial + after tool result)
     assert mock_provider.send_message.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_compacts_when_over_threshold(mock_provider):
+    """Orchestrator compacts history when token count exceeds threshold."""
+    mock_provider.count_tokens = AsyncMock(return_value=110_000)
+
+    resp1 = AIResponse(text="First reply.", tool_calls=[], input_tokens=50, output_tokens=20)
+    resp2 = AIResponse(text="Second reply.", tool_calls=[], input_tokens=50, output_tokens=20)
+    summary_resp = AIResponse(
+        text="User was debugging app.py, found null pointer on line 42.",
+        tool_calls=[],
+        input_tokens=100,
+        output_tokens=50,
+    )
+    final_resp = AIResponse(
+        text="Got it.", tool_calls=[], input_tokens=30, output_tokens=10
+    )
+
+    mock_provider.send_message = AsyncMock(
+        side_effect=[resp1, resp2, summary_resp, final_resp]
+    )
+
+    orch = Orchestrator(provider=mock_provider, compaction_threshold=100_000)
+
+    # Build up history: after 2 chats, history = [u1, a1, u2, a2] = 4 messages
+    await orch.chat("First message")
+    await orch.chat("Second message")
+
+    # Third chat appends user msg -> history = 5, triggers compaction
+    result = await orch.chat("Third message")
+    assert result.text == "Got it."
+    assert orch.compaction_count == 1
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_no_compact_when_disabled(mock_provider):
+    """Orchestrator does not compact when compaction is disabled."""
+    mock_provider.count_tokens = AsyncMock(return_value=200_000)
+
+    orch = Orchestrator(provider=mock_provider, compaction_enabled=False)
+
+    resp = await orch.chat("Hello")
+    assert resp.text == "Yeah, that variable is null."
+    mock_provider.count_tokens.assert_not_called()
+    assert orch.compaction_count == 0
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_compact_preserves_recent_turns(mock_provider):
+    """After compaction, the last user+assistant exchange is preserved."""
+    mock_provider.count_tokens = AsyncMock(return_value=110_000)
+
+    summary_resp = AIResponse(
+        text="Summary of conversation.",
+        tool_calls=[],
+        input_tokens=50,
+        output_tokens=30,
+    )
+    final_resp = AIResponse(
+        text="Continuing.", tool_calls=[], input_tokens=30, output_tokens=10
+    )
+
+    call_count = 0
+
+    async def side_effect(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        messages = kwargs.get("messages", [])
+        if call_count == 1:
+            # First chat response
+            return AIResponse(
+                text="First reply.",
+                tool_calls=[],
+                input_tokens=50,
+                output_tokens=20,
+            )
+        if call_count == 2:
+            # Second chat response
+            return AIResponse(
+                text="Second reply.",
+                tool_calls=[],
+                input_tokens=50,
+                output_tokens=20,
+            )
+        if call_count == 3:
+            # Summary request (compaction)
+            return summary_resp
+        if call_count == 4:
+            # Final chat after compaction
+            # History should have: summary_user, summary_asst,
+            # prev_user, prev_asst, new_user = 5
+            assert len(messages) == 5
+            assert "[Previous conversation summary]" in messages[0]["content"]
+            return final_resp
+        return final_resp
+
+    mock_provider.send_message = AsyncMock(side_effect=side_effect)
+
+    orch = Orchestrator(provider=mock_provider, compaction_threshold=100_000)
+
+    # Build up history: 2 exchanges = 4 messages
+    await orch.chat("Build up history")
+    await orch.chat("More history")
+    # Third chat triggers compaction (history >= 4)
+    await orch.chat("This triggers compaction")
+    assert orch.compaction_count == 1
