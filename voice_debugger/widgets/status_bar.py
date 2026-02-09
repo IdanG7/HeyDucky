@@ -1,5 +1,5 @@
 # voice_debugger/widgets/status_bar.py
-"""Status bar widget showing mic state, provider, and cost."""
+"""Status bar widget showing mic state, debug state, provider, and cost."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from textual.reactive import reactive
 
 
 class VoiceStatusBar(Static):
-    """Status bar showing recording state, AI provider, and session cost."""
+    """Status bar showing recording state, debug state, AI provider, and session cost."""
 
     DEFAULT_CSS = """
     VoiceStatusBar {
@@ -22,8 +22,21 @@ class VoiceStatusBar(Static):
     is_recording = reactive(False)
     provider_name = reactive("Claude")
     session_cost = reactive(0.0)
+    debug_state = reactive("idle")
+    debug_file = reactive("")
+    debug_line = reactive(0)
 
     def render(self) -> str:
-        mic = "[bold red]Recording...[/]" if self.is_recording else "[dim]Press Space to talk[/]"
+        mic = "[bold red]Recording...[/]" if self.is_recording else "[dim]Space: Talk[/]"
         cost = f"${self.session_cost:.4f}"
-        return f"{mic}  |  Provider: {self.provider_name}  |  Cost: {cost}"
+
+        if self.debug_state == "paused":
+            dbg = f"[bold yellow]Paused[/] at {self.debug_file}:{self.debug_line}"
+        elif self.debug_state == "running":
+            dbg = "[bold green]Running[/]"
+        elif self.debug_state == "stopped":
+            dbg = "[dim]Stopped[/]"
+        else:
+            dbg = "[dim]No debug session[/]"
+
+        return f"{mic}  |  {dbg}  |  {self.provider_name}  |  {cost}"

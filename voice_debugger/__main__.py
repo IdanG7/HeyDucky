@@ -9,6 +9,11 @@ def main():
         description="Voice-controlled AI debugging assistant"
     )
     parser.add_argument(
+        "target",
+        nargs="?",
+        help="Program to debug (e.g., script.py)",
+    )
+    parser.add_argument(
         "--setup",
         action="store_true",
         help="Run first-time setup wizard",
@@ -21,7 +26,7 @@ def main():
 
     from voice_debugger.app import VoiceDebuggerApp
 
-    app = VoiceDebuggerApp()
+    app = VoiceDebuggerApp(target=args.target)
     app.run()
 
 
@@ -34,7 +39,8 @@ def _run_setup():
 
     config = Config.load()
 
-    api_key = input(f"Anthropic API key [{config.api_key[:8]}...]: ").strip()
+    api_key_display = config.api_key[:8] if config.api_key else "not set"
+    api_key = input(f"Anthropic API key [{api_key_display}]: ").strip()
     if api_key:
         config.api_key = api_key
 
@@ -47,7 +53,7 @@ def _run_setup():
         config.whisper_model = whisper
 
     config.save()
-    print(f"\nConfig saved. Run 'voice-debugger' to start.")
+    print("\nConfig saved. Run 'voice-debugger' to start.")
 
 
 if __name__ == "__main__":
