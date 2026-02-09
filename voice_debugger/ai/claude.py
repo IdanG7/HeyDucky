@@ -56,5 +56,24 @@ class ClaudeProvider(AIProvider):
             output_tokens=response.usage.output_tokens,
         )
 
+    async def count_tokens(
+        self,
+        messages: list[dict],
+        system: str = "",
+        tools: list[dict] | None = None,
+    ) -> int:
+        """Count input tokens using the Anthropic API."""
+        kwargs: dict = {
+            "model": self._model,
+            "messages": messages,
+        }
+        if system:
+            kwargs["system"] = system
+        if tools:
+            kwargs["tools"] = tools
+
+        result = await self._client.messages.count_tokens(**kwargs)
+        return result.input_tokens
+
     def model_name(self) -> str:
         return self._model

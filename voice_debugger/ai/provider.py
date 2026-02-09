@@ -54,6 +54,16 @@ class AIProvider(ABC):
         ...
 
     @abstractmethod
+    async def count_tokens(
+        self,
+        messages: list[dict],
+        system: str = "",
+        tools: list[dict] | None = None,
+    ) -> int:
+        """Count input tokens for the given messages."""
+        ...
+
+    @abstractmethod
     def model_name(self) -> str:
         """Return the model identifier."""
         ...

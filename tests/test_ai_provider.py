@@ -1,8 +1,12 @@
 """Tests for AI provider abstraction."""
 
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from voice_debugger.ai.provider import AIResponse
 from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
 from voice_debugger.ai.functions import DEBUGGER_TOOLS
+from voice_debugger.ai.claude import ClaudeProvider
 
 
 def test_ai_response_dataclass():
@@ -58,3 +62,19 @@ def test_ai_response_cost_calculation():
     cost = resp.cost("claude")
     assert cost > 0
     assert isinstance(cost, float)
+
+
+@pytest.mark.asyncio
+async def test_claude_count_tokens():
+    """ClaudeProvider.count_tokens returns token count from API."""
+    provider = ClaudeProvider(api_key="test-key")
+
+    # Mock the count_tokens call
+    mock_result = MagicMock()
+    mock_result.input_tokens = 1500
+    provider._client.messages.count_tokens = AsyncMock(return_value=mock_result)
+
+    messages = [{"role": "user", "content": "hello"}]
+    count = await provider.count_tokens(messages, system="You are helpful.")
+    assert count == 1500
+    provider._client.messages.count_tokens.assert_called_once()
