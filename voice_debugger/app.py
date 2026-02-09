@@ -25,6 +25,7 @@ from voice_debugger.widgets import (
     ProjectTree,
     FolderPickerScreen,
     HistoryScreen,
+    SettingsScreen,
 )
 
 
@@ -68,6 +69,7 @@ class VoiceDebuggerApp(App):
         Binding("t", "toggle_tree_focus", "Tree", show=False, priority=True),
         Binding("o", "open_project", "Open", show=False, priority=True),
         Binding("h", "show_history", "History", show=False, priority=True),
+        Binding("s", "show_settings", "Settings", show=False, priority=True),
         Binding("f5", "debug_continue", "Continue", show=False),
         Binding("f10", "debug_step_over", "Step Over", show=False),
         Binding("f11", "debug_step_into", "Step Into", show=False),
@@ -114,7 +116,7 @@ class VoiceDebuggerApp(App):
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Ready when you are. Press Space and talk to me.")
         conv.add_system_message(
-            "1-5 switch tabs | t tree/source | o open project | h history"
+            "1-5 switch tabs | t tree/source | o open project | h history | s settings"
         )
         conv.add_system_message(f"Project: {self._project_root}")
         self._init_components()
@@ -198,6 +200,30 @@ class VoiceDebuggerApp(App):
 
         conv.add_system_message("---")
         conv.add_system_message("End of saved session. Press Space to continue chatting.")
+
+    def action_show_settings(self) -> None:
+        """Open the settings screen."""
+        self.push_screen(
+            SettingsScreen(self.config),
+            callback=self._on_settings_saved,
+        )
+
+    def _on_settings_saved(self, result: Config | None) -> None:
+        """Apply and persist updated settings."""
+        if result is None:
+            return
+
+        result.save()
+        self.config = result
+
+        conv = self.query_one("#conversation-view", ConversationView)
+        conv.add_system_message("Settings saved.")
+
+        # Update orchestrator compaction settings if it exists
+        if self._orchestrator:
+            self._orchestrator._compaction_enabled = result.compaction_enabled
+            self._orchestrator._compaction_threshold = result.compaction_threshold
+            self._orchestrator._max_compactions = result.max_compactions
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
