@@ -374,6 +374,10 @@ class VoiceDebuggerApp(App):
             self._show_system_message,
             f"Context compacted ({count}x) — was {token_count:,} tokens. Conversation summary preserved.",
         )
+        self.call_from_thread(self._update_compaction_count, count)
+
+    def _update_compaction_count(self, count: int) -> None:
+        self.query_one("#status-bar", VoiceStatusBar).compaction_count = count
 
     def _show_tool_call(self, name: str, args: dict) -> None:
         self.query_one("#conversation-view", ConversationView).add_tool_message(name, args)

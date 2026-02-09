@@ -25,6 +25,7 @@ class VoiceStatusBar(Static):
     debug_state = reactive("idle")
     debug_file = reactive("")
     debug_line = reactive(0)
+    compaction_count = reactive(0)
 
     def render(self) -> str:
         mic = "[bold red]Recording...[/]" if self.is_recording else "[dim]Space: Talk[/]"
@@ -39,4 +40,5 @@ class VoiceStatusBar(Static):
         else:
             dbg = "[dim]No debug session[/]"
 
-        return f"{mic}  |  {dbg}  |  {self.provider_name}  |  {cost}"
+        compact = f"  |  [dim]Compacted {self.compaction_count}x[/]" if self.compaction_count else ""
+        return f"{mic}  |  {dbg}  |  {self.provider_name}  |  {cost}{compact}"
