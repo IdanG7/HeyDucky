@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Awaitable, Any
+from typing import Callable, Awaitable
 
 from voice_debugger.debugger.dap_client import DAPClient
 from voice_debugger.debugger.adapters import detect_language, get_adapter_config

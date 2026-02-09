@@ -1,11 +1,9 @@
 """Tests for DAP transport layer."""
 
-import asyncio
-import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from voice_debugger.debugger.transport import StdioTransport, TCPTransport
-from voice_debugger.debugger.types import DAPRequest, encode_message
+from unittest.mock import AsyncMock, MagicMock
+from voice_debugger.debugger.transport import StdioTransport
+from voice_debugger.debugger.types import DAPRequest
 
 
 @pytest.mark.asyncio

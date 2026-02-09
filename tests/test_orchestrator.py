@@ -1,10 +1,9 @@
 """Tests for AI orchestrator."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from voice_debugger.ai.orchestrator import Orchestrator
 from voice_debugger.ai.provider import AIResponse, ToolCall
-from voice_debugger.config import Config
 
 
 @pytest.fixture

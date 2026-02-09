@@ -1,6 +1,4 @@
 # tests/test_config.py
-import os
-import tempfile
 from pathlib import Path
 from voice_debugger.config import Config
 

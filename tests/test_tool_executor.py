@@ -1,7 +1,7 @@
 """Tests for tool executor bridging AI tool calls to debugger."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from voice_debugger.debugger.tool_executor import ToolExecutor
 from voice_debugger.ai.provider import ToolCall
 from voice_debugger.debugger.types import DAPResponse
@@ -70,7 +70,7 @@ async def test_execute_set_breakpoint(mock_dap):
 async def test_execute_step_over(mock_dap):
     """ToolExecutor handles step_over."""
     executor = ToolExecutor(mock_dap)
-    result = await executor.execute(
+    await executor.execute(
         ToolCall(id="t2", name="step_over", arguments={})
     )
     mock_dap.step_over.assert_called_once()
@@ -170,7 +170,7 @@ async def test_execute_read_source_missing_file(mock_dap):
 async def test_execute_set_breakpoint_with_condition(mock_dap):
     """ToolExecutor passes condition to set_breakpoint."""
     executor = ToolExecutor(mock_dap)
-    result = await executor.execute(
+    await executor.execute(
         ToolCall(
             id="t10",
             name="set_breakpoint",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable
 
 from voice_debugger.debugger.types import DAPRequest, DAPResponse, DAPEvent
 from voice_debugger.debugger.transport import BaseTransport, StdioTransport, TCPTransport

@@ -1,10 +1,8 @@
 """Tests for DAP client."""
 
-import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from voice_debugger.debugger.dap_client import DAPClient
-from voice_debugger.debugger.types import DAPResponse, DAPEvent
 
 
 @pytest.fixture

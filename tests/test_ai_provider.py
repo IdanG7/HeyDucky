@@ -1,6 +1,6 @@
 """Tests for AI provider abstraction."""
 
-from voice_debugger.ai.provider import AIProvider, AIResponse
+from voice_debugger.ai.provider import AIResponse
 from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
 from voice_debugger.ai.functions import DEBUGGER_TOOLS
 

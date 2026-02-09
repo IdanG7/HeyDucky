@@ -1,7 +1,6 @@
 """Tests for voice handler."""
 
 import numpy as np
-import pytest
 from unittest.mock import patch, MagicMock
 from voice_debugger.voice import VoiceHandler, trim_silence
 
@@ -30,7 +29,7 @@ def test_trim_silence_all_silent():
 
 def test_voice_handler_init():
     """VoiceHandler initializes with config defaults."""
-    with patch("voice_debugger.voice.WhisperModel") as mock_whisper:
+    with patch("voice_debugger.voice.WhisperModel"):
         handler = VoiceHandler(whisper_model="tiny.en")
         assert handler.sample_rate == 16000
         assert handler._is_recording is False

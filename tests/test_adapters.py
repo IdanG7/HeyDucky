@@ -1,6 +1,5 @@
 """Tests for debug adapter registry."""
 
-import pytest
 from voice_debugger.debugger.adapters import (
     AdapterConfig,
     ADAPTER_REGISTRY,

@@ -1,7 +1,6 @@
 # tests/test_source_view.py
 """Tests for upgraded source view widget."""
 
-import pytest
 from voice_debugger.widgets.source_view import SourceView
 
 

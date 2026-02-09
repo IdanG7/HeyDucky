@@ -1,7 +1,6 @@
 # tests/test_project_tree.py
 """Tests for filtered project tree widget."""
 
-from pathlib import Path
 
 from voice_debugger.widgets.project_tree import ProjectTree, IGNORE_NAMES, IGNORE_EXTENSIONS
 
