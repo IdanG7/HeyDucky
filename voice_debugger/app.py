@@ -57,6 +57,7 @@ class VoiceDebuggerApp(App):
         self._voice = None
         self._orchestrator = None
         self._dap_client = None
+        self._debug_session = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -97,6 +98,10 @@ class VoiceDebuggerApp(App):
             conv.add_system_message(
                 "No API key configured. Set ANTHROPIC_API_KEY env var or run with --setup."
             )
+
+        # Start debug session if target provided
+        if self._target:
+            self._start_debug_session()
 
     @work(thread=True, exclusive=True, group="voice-init")
     def _init_voice_worker(self) -> None:
@@ -209,3 +214,79 @@ class VoiceDebuggerApp(App):
 
     def _update_cost(self, cost: float) -> None:
         self.query_one("#status-bar", VoiceStatusBar).session_cost = cost
+
+    @work(thread=True, exclusive=True, group="debug-session")
+    def _start_debug_session(self) -> None:
+        """Start a debug session for the target program."""
+        import asyncio
+        from voice_debugger.debugger.session import DebugSession
+        from voice_debugger.debugger.tool_executor import ToolExecutor
+
+        async def run():
+            self._debug_session = DebugSession(
+                on_state_change=self._on_debug_state_change,
+                on_output=self._on_debug_output,
+            )
+            await self._debug_session.start(self._target)
+
+            # Connect tool executor to orchestrator
+            if self._orchestrator and self._debug_session.client:
+                executor = ToolExecutor(self._debug_session.client)
+                self._orchestrator._tool_executor = executor
+
+            # Also expose the DAP client for keybinding actions
+            self._dap_client = self._debug_session.client
+
+        try:
+            asyncio.run(run())
+            self.call_from_thread(
+                self._show_system_message,
+                f"Debug session started for {self._target}",
+            )
+        except Exception as e:
+            self.call_from_thread(
+                self._show_system_message,
+                f"Failed to start debug session: {e}",
+            )
+
+    async def _on_debug_state_change(self, state: str, frames: list) -> None:
+        """Handle debugger state changes (called from async context)."""
+        self.call_from_thread(self._update_debug_state, state, frames)
+
+    async def _on_debug_output(self, category: str, text: str) -> None:
+        """Handle program output."""
+        self.call_from_thread(self._add_debug_output, category, text)
+
+    def _update_debug_state(self, state: str, frames: list) -> None:
+        """Update UI with debug state."""
+        status = self.query_one("#status-bar", VoiceStatusBar)
+        status.debug_state = state
+
+        if state == "paused" and frames:
+            top = frames[0]
+            source = top.get("source", {})
+            file_path = source.get("path", "") if isinstance(source, dict) else ""
+            line = top.get("line", 0)
+
+            status.debug_file = file_path
+            status.debug_line = line
+
+            # Update source view
+            source_view = self.query_one("#source-view", SourceView)
+            source_view.load_source(file_path)
+            source_view.set_current_line(line)
+
+            # Update call stack
+            stack_view = self.query_one("#callstack-view", CallStackView)
+            stack_view.update_frames(frames)
+
+            # Switch to source tab
+            self.query_one(TabbedContent).active = "source"
+
+    def _add_debug_output(self, category: str, text: str) -> None:
+        """Add program output to the output panel."""
+        output = self.query_one("#output-view", DebugOutputView)
+        if category == "stderr":
+            output.add_stderr(text)
+        else:
+            output.add_stdout(text)
