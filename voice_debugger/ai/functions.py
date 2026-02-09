@@ -67,4 +67,23 @@ DEBUGGER_TOOLS = [
         "description": "Get the current call stack",
         "input_schema": {"type": "object", "properties": {}},
     },
+    {
+        "name": "read_source",
+        "description": "Read source code around a specific line in a file",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file": {"type": "string", "description": "File path"},
+                "line": {
+                    "type": "integer",
+                    "description": "Center line number",
+                },
+                "context": {
+                    "type": "integer",
+                    "description": "Lines of context (default 10)",
+                },
+            },
+            "required": ["file", "line"],
+        },
+    },
 ]
