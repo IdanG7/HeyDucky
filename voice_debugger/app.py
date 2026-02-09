@@ -315,6 +315,13 @@ class VoiceDebuggerApp(App):
             stack_view = self.query_one("#callstack-view", CallStackView)
             stack_view.update_frames(frames)
 
+            # Sync file tree
+            try:
+                tree = self.query_one("#project-tree", ProjectTree)
+                tree.reveal_path(file_path)
+            except Exception:
+                pass  # Tree may not be ready
+
             # Switch to source tab
             self.query_one(TabbedContent).active = "source"
 

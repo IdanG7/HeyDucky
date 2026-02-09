@@ -92,3 +92,10 @@ def test_ignore_extensions_is_set():
     """IGNORE_EXTENSIONS is a frozenset with expected entries."""
     assert isinstance(IGNORE_EXTENSIONS, frozenset)
     assert ".pyc" in IGNORE_EXTENSIONS
+
+
+def test_project_tree_has_reveal_path():
+    """ProjectTree has a reveal_path method."""
+    tree = ProjectTree("/tmp")
+    assert hasattr(tree, "reveal_path")
+    assert callable(tree.reveal_path)
