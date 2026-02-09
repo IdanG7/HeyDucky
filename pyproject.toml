@@ -24,5 +24,8 @@ dev = [
     "ruff>=0.1.0",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [project.scripts]
 voice-debugger = "voice_debugger.__main__:main"
