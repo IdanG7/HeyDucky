@@ -10,8 +10,9 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Header, Footer, TabbedContent, TabPane, Input
+from textual.widgets import Header, Footer, TabbedContent, TabPane
 
+from voice_debugger.chat_history import ChatHistory
 from voice_debugger.config import Config
 from voice_debugger.project import detect_project_root
 from voice_debugger.widgets import (
@@ -22,6 +23,8 @@ from voice_debugger.widgets import (
     CallStackView,
     DebugOutputView,
     ProjectTree,
+    FolderPickerScreen,
+    HistoryScreen,
 )
 
 
@@ -55,15 +58,16 @@ class VoiceDebuggerApp(App):
     """
 
     BINDINGS = [
-        Binding("q", "quit", "Quit"),
-        Binding("space", "toggle_recording", "Talk", show=True),
-        Binding("1", "show_tab('source')", "Source", show=False),
-        Binding("2", "show_tab('conversation')", "Chat", show=False),
-        Binding("3", "show_tab('variables')", "Vars", show=False),
-        Binding("4", "show_tab('callstack')", "Stack", show=False),
-        Binding("5", "show_tab('output')", "Output", show=False),
-        Binding("t", "toggle_tree_focus", "Tree", show=False),
-        Binding("o", "open_project", "Open", show=False),
+        Binding("q", "quit", "Quit", priority=True),
+        Binding("space", "toggle_recording", "Talk", show=True, priority=True),
+        Binding("1", "show_tab('source')", "Source", show=False, priority=True),
+        Binding("2", "show_tab('conversation')", "Chat", show=False, priority=True),
+        Binding("3", "show_tab('variables')", "Vars", show=False, priority=True),
+        Binding("4", "show_tab('callstack')", "Stack", show=False, priority=True),
+        Binding("5", "show_tab('output')", "Output", show=False, priority=True),
+        Binding("t", "toggle_tree_focus", "Tree", show=False, priority=True),
+        Binding("o", "open_project", "Open", show=False, priority=True),
+        Binding("h", "show_history", "History", show=False, priority=True),
         Binding("f5", "debug_continue", "Continue", show=False),
         Binding("f10", "debug_step_over", "Step Over", show=False),
         Binding("f11", "debug_step_into", "Step Into", show=False),
@@ -77,6 +81,7 @@ class VoiceDebuggerApp(App):
         self._orchestrator = None
         self._dap_client = None
         self._debug_session = None
+        self._chat_history = ChatHistory()
 
         # Determine project root
         if project:
@@ -107,10 +112,9 @@ class VoiceDebuggerApp(App):
     def on_mount(self) -> None:
         """Initialize components after mount."""
         conv = self.query_one("#conversation-view", ConversationView)
-        conv.add_system_message("Welcome to Voice Debugger. Press Space to talk.")
+        conv.add_system_message("Ready when you are. Press Space and talk to me.")
         conv.add_system_message(
-            "Tabs: 1=Source 2=Chat 3=Vars 4=Stack 5=Output | "
-            "t=Tree focus | o=Open project"
+            "1-5 switch tabs | t tree/source | o open project | h history"
         )
         conv.add_system_message(f"Project: {self._project_root}")
         self._init_components()
@@ -134,47 +138,27 @@ class VoiceDebuggerApp(App):
             tree.focus()
 
     def action_open_project(self) -> None:
-        """Prompt for a project folder path and switch to it."""
-        conv = self.query_one("#conversation-view", ConversationView)
-        # Switch to conversation tab to show the input
-        self.query_one(TabbedContent).active = "conversation"
-        conv.add_system_message(
-            f"Current project: {self._project_root}\n"
-            "Type a new folder path below and press Enter (or Escape to cancel):"
+        """Open folder picker to choose a new project root."""
+        self.push_screen(
+            FolderPickerScreen(start_path=self._project_root),
+            callback=self._on_folder_picked,
         )
-        # Mount an input widget inside the conversation tab
-        input_widget = Input(
-            placeholder="Enter project folder path...",
-            id="project-path-input",
-        )
-        conv.mount(input_widget)
-        input_widget.focus()
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle submitted project path from the input widget."""
-        if event.input.id != "project-path-input":
-            return
-        path_str = event.value.strip()
-        event.input.remove()
-
-        conv = self.query_one("#conversation-view", ConversationView)
-
-        if not path_str:
-            conv.add_system_message("Cancelled.")
+    def _on_folder_picked(self, result: Path | None) -> None:
+        """Handle the result from the folder picker modal."""
+        if result is None:
             return
 
-        new_root = Path(path_str).expanduser().resolve()
-        if not new_root.is_dir():
-            conv.add_system_message(f"Not a valid directory: {new_root}")
-            return
-
+        new_root = result.resolve()
         self._project_root = new_root
+
+        conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message(f"Project changed to: {self._project_root}")
 
-        # Replace the tree widget with a new one pointing at the new root
-        old_tree = self.query_one("#project-tree", ProjectTree)
-        new_tree = ProjectTree(self._project_root, id="project-tree")
-        old_tree.replace(new_tree)
+        # Update the existing tree to point at the new root
+        tree = self.query_one("#project-tree", ProjectTree)
+        tree.path = self._project_root
+        tree.reload()
 
         # Update git tool executor project root if it exists
         if self._orchestrator and self._orchestrator._tool_executor:
@@ -182,6 +166,38 @@ class VoiceDebuggerApp(App):
 
         # Switch to source tab to show the new tree
         self.query_one(TabbedContent).active = "source"
+
+    def action_show_history(self) -> None:
+        """Open the chat history browser."""
+        self.push_screen(
+            HistoryScreen(self._chat_history),
+            callback=self._on_history_selected,
+        )
+
+    def _on_history_selected(self, result: Path | None) -> None:
+        """Load a past conversation into the conversation view."""
+        if result is None:
+            return
+
+        messages = self._chat_history.load_session(result)
+        conv = self.query_one("#conversation-view", ConversationView)
+
+        # Switch to conversation tab and show the loaded session
+        self.query_one(TabbedContent).active = "conversation"
+        conv.clear()
+        conv.add_system_message(f"Viewing saved session: {result.stem}")
+        conv.add_system_message("---")
+
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role == "user":
+                conv.add_user_message(content)
+            elif role == "assistant":
+                conv.add_ai_message(content)
+
+        conv.add_system_message("---")
+        conv.add_system_message("End of saved session. Press Space to continue chatting.")
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
@@ -193,7 +209,13 @@ class VoiceDebuggerApp(App):
             from voice_debugger.ai.orchestrator import Orchestrator
 
             provider = ClaudeProvider(api_key=api_key, model=self.config.ai_model)
-            self._orchestrator = Orchestrator(provider=provider)
+            self._orchestrator = Orchestrator(
+                provider=provider,
+                compaction_enabled=self.config.compaction_enabled,
+                compaction_threshold=self.config.compaction_threshold,
+                max_compactions=self.config.max_compactions,
+            )
+            self._orchestrator._on_compaction = self._on_compaction_occurred
 
             # Set up git-only tool executor if no debug session
             if not self._target:
@@ -311,12 +333,21 @@ class VoiceDebuggerApp(App):
 
     def _show_user_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_user_message(text)
+        self._chat_history.add("user", text)
 
     def _show_ai_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_ai_message(text)
+        self._chat_history.add("assistant", text)
 
     def _show_system_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_system_message(text)
+
+    def _on_compaction_occurred(self, count: int, token_count: int) -> None:
+        """Notify user that conversation was compacted."""
+        self.call_from_thread(
+            self._show_system_message,
+            f"Context compacted ({count}x) — was {token_count:,} tokens. Conversation summary preserved.",
+        )
 
     def _show_tool_call(self, name: str, args: dict) -> None:
         self.query_one("#conversation-view", ConversationView).add_tool_message(name, args)
