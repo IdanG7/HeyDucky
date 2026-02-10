@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 import re
 import threading
+
+logger = logging.getLogger(__name__)
 
 
 # Sentence boundary pattern: period, exclamation, or question mark
@@ -100,4 +103,4 @@ class TTSHandler:
                 )
                 play_stream(audio)
             except Exception:
-                pass  # Don't crash the thread on TTS errors
+                logger.debug("TTS playback error", exc_info=True)

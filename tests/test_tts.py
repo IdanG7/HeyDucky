@@ -130,14 +130,20 @@ class TestTTSHandler:
                     TTSHandler(api_key="test-key")
 
     def test_speak_enqueues_text(self, mock_elevenlabs):
-        """speak() puts text on the queue when enabled."""
+        """speak() puts text on the queue and playback loop processes it."""
+        mock_client = mock_elevenlabs["client"]
         handler = TTSHandler(api_key="key")
-        # Drain anything the playback thread might process
-        handler.stop()
         handler.speak("Hello")
-        # Give the playback thread a moment then check
-        time.sleep(0.05)
+        # Give the playback thread time to process
+        time.sleep(0.2)
         handler.shutdown()
+        handler._thread.join(timeout=2)
+        # Verify the text was actually processed by the playback loop
+        mock_client.text_to_speech.convert_as_stream.assert_called_with(
+            text="Hello",
+            voice_id="JBFqnCBsd6RMkjVDRZzb",
+            model_id="eleven_multilingual_v2",
+        )
 
     def test_speak_skips_empty(self, mock_elevenlabs):
         """speak() ignores empty/whitespace text."""
