@@ -44,7 +44,7 @@ class TTSHandler:
         self,
         api_key: str,
         voice_id: str = "JBFqnCBsd6RMkjVDRZzb",
-        model_id: str = "eleven_multilingual_v2",
+        model_id: str = "eleven_flash_v2_5",
     ):
         try:
             from elevenlabs.client import ElevenLabs
@@ -96,11 +96,11 @@ class TTSHandler:
             if text is None:
                 break
             try:
-                audio = self._client.text_to_speech.convert_as_stream(
+                audio_stream = self._client.text_to_speech.stream(
                     text=text,
                     voice_id=self._voice_id,
                     model_id=self._model_id,
                 )
-                play_stream(audio)
+                play_stream(audio_stream)
             except Exception:
                 logger.debug("TTS playback error", exc_info=True)

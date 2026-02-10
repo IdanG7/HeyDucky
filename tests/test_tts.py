@@ -139,10 +139,10 @@ class TestTTSHandler:
         handler.shutdown()
         handler._thread.join(timeout=2)
         # Verify the text was actually processed by the playback loop
-        mock_client.text_to_speech.convert_as_stream.assert_called_with(
+        mock_client.text_to_speech.stream.assert_called_with(
             text="Hello",
             voice_id="JBFqnCBsd6RMkjVDRZzb",
-            model_id="eleven_multilingual_v2",
+            model_id="eleven_flash_v2_5",
         )
 
     def test_speak_skips_empty(self, mock_elevenlabs):
@@ -209,10 +209,10 @@ class TestTTSHandler:
         assert not handler._thread.is_alive()
 
     def test_playback_loop_calls_stream(self, mock_elevenlabs):
-        """The playback loop calls convert_as_stream and stream."""
+        """The playback loop calls client.stream() and plays audio."""
         mock_client = mock_elevenlabs["client"]
         mock_audio = MagicMock()
-        mock_client.text_to_speech.convert_as_stream.return_value = mock_audio
+        mock_client.text_to_speech.stream.return_value = mock_audio
 
         handler = TTSHandler(api_key="key")
         handler.speak("Test speech")
@@ -221,17 +221,17 @@ class TestTTSHandler:
         handler.shutdown()
         handler._thread.join(timeout=2)
 
-        mock_client.text_to_speech.convert_as_stream.assert_called_with(
+        mock_client.text_to_speech.stream.assert_called_with(
             text="Test speech",
             voice_id="JBFqnCBsd6RMkjVDRZzb",
-            model_id="eleven_multilingual_v2",
+            model_id="eleven_flash_v2_5",
         )
         mock_elevenlabs["stream"].assert_called_with(mock_audio)
 
     def test_playback_loop_handles_exception(self, mock_elevenlabs):
         """Playback loop doesn't crash on TTS API errors."""
         mock_client = mock_elevenlabs["client"]
-        mock_client.text_to_speech.convert_as_stream.side_effect = RuntimeError("API error")
+        mock_client.text_to_speech.stream.side_effect = RuntimeError("API error")
 
         handler = TTSHandler(api_key="key")
         handler.speak("This will fail")
