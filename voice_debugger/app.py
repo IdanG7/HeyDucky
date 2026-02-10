@@ -70,6 +70,7 @@ class VoiceDebuggerApp(App):
         Binding("o", "open_project", "Open", show=False, priority=True),
         Binding("h", "show_history", "History", show=False, priority=True),
         Binding("s", "show_settings", "Settings", show=False, priority=True),
+        Binding("e", "export_session", "Export", show=False, priority=True),
         Binding("f5", "debug_continue", "Continue", show=False),
         Binding("f10", "debug_step_over", "Step Over", show=False),
         Binding("f11", "debug_step_into", "Step Into", show=False),
@@ -237,6 +238,18 @@ class VoiceDebuggerApp(App):
         if self._orchestrator:
             self._orchestrator._compaction_enabled = result.compaction_enabled
 
+    def action_export_session(self) -> None:
+        """Export the current conversation as a markdown file."""
+        md = self._chat_history.export_current_markdown()
+        if not md:
+            conv = self.query_one("#conversation-view", ConversationView)
+            conv.add_system_message("Nothing to export yet.")
+            return
+        export_path = Path.home() / "Desktop" / f"debug-session-{self._chat_history.session_id}.md"
+        export_path.write_text(md)
+        conv = self.query_one("#conversation-view", ConversationView)
+        conv.add_system_message(f"Session exported to {export_path}")
+
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
         self._init_voice_worker()
@@ -310,8 +323,22 @@ class VoiceDebuggerApp(App):
             status.is_recording = False
             self._process_recording()
         else:
+            # Clear any stale error before starting
+            stale_error = self._voice.last_error
+            if stale_error:
+                conv = self.query_one("#conversation-view", ConversationView)
+                conv.add_system_message(f"Previous error: {stale_error}")
+
             self._voice.start_recording()
-            status.is_recording = True
+
+            # Check if start_recording failed
+            error = self._voice.last_error
+            if error:
+                conv = self.query_one("#conversation-view", ConversationView)
+                conv.add_system_message(error)
+                status.is_recording = False
+            else:
+                status.is_recording = True
 
     def action_debug_continue(self) -> None:
         """Continue debug execution."""
@@ -342,11 +369,23 @@ class VoiceDebuggerApp(App):
     def _process_recording(self) -> None:
         """Stop recording, transcribe, and send to AI with streaming."""
         audio = self._voice.stop_recording()
+
+        # Check for errors during recording/stop
+        error = self._voice.last_error
+        if error:
+            self.call_from_thread(self._show_system_message, error)
+
         if len(audio) == 0:
             self.call_from_thread(self._show_system_message, "No speech detected.")
             return
 
         transcript = self._voice.transcribe(audio)
+
+        # Check for transcription errors
+        error = self._voice.last_error
+        if error:
+            self.call_from_thread(self._show_system_message, error)
+
         if not transcript:
             self.call_from_thread(self._show_system_message, "Could not transcribe audio.")
             return

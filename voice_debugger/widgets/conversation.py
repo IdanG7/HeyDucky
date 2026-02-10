@@ -56,11 +56,17 @@ class ConversationView(RichLog):
         self.write(msg)
 
     def add_tool_message(self, tool_name: str, args: dict) -> None:
-        """Show a tool call (stubbed for now)."""
+        """Show a tool call with special formatting for conditional breakpoints."""
         msg = Text()
-        msg.append(f"  [tool] {tool_name}", style="yellow")
-        if args:
-            msg.append(f"({args})", style="dim yellow")
+        if tool_name == "set_breakpoint" and args.get("condition"):
+            msg.append("  breakpoint ", style="yellow")
+            msg.append(f"{args.get('file', '?')}:{args.get('line', '?')}", style="bold yellow")
+            msg.append(" when ", style="yellow")
+            msg.append(f"{args['condition']}", style="bold magenta")
+        else:
+            msg.append(f"  [tool] {tool_name}", style="yellow")
+            if args:
+                msg.append(f"({args})", style="dim yellow")
         self.write(msg)
 
     def start_ai_stream(self) -> None:

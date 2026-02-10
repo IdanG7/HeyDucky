@@ -206,6 +206,38 @@ async def test_execute_set_breakpoint_failure(mock_dap):
 
 
 @pytest.mark.asyncio
+async def test_execute_set_breakpoint_condition_in_result(mock_dap):
+    """ToolExecutor includes condition in the confirmation string."""
+    executor = ToolExecutor(mock_dap)
+    result = await executor.execute(
+        ToolCall(
+            id="t12",
+            name="set_breakpoint",
+            arguments={"file": "app.py", "line": 42, "condition": "x > 10"},
+        )
+    )
+    assert "when x > 10" in result
+    assert "app.py:42" in result
+    assert "verified" in result.lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_set_breakpoint_no_condition_in_result(mock_dap):
+    """ToolExecutor omits condition text when no condition is given."""
+    executor = ToolExecutor(mock_dap)
+    result = await executor.execute(
+        ToolCall(
+            id="t13",
+            name="set_breakpoint",
+            arguments={"file": "app.py", "line": 10},
+        )
+    )
+    assert "when" not in result
+    assert "app.py:10" in result
+    assert "verified" in result.lower()
+
+
+@pytest.mark.asyncio
 async def test_execute_git_status(mock_dap, tmp_path):
     """ToolExecutor handles run_git_command for git status."""
     import subprocess

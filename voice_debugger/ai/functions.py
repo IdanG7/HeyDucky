@@ -3,7 +3,7 @@
 DEBUGGER_TOOLS = [
     {
         "name": "set_breakpoint",
-        "description": "Set a breakpoint at a specific line in a file",
+        "description": "Set a breakpoint at a specific line in a file. For conditional breakpoints, translate natural language conditions to Python expressions in the 'condition' parameter (e.g., 'x > 10', 'name is None').",
         "input_schema": {
             "type": "object",
             "properties": {

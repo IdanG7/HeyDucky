@@ -113,6 +113,24 @@ class ChatHistory:
 
         return {k: v for k, v in groups.items() if v}
 
+    def export_current_markdown(self) -> str:
+        """Export current session as markdown text."""
+        if not self._messages:
+            return ""
+        lines = [f"# Debug Session: {self._session_id}", ""]
+        for msg in self._messages:
+            role = msg["role"]
+            content = msg["content"]
+            if role == "user":
+                lines.append(f"**You:** {content}")
+                lines.append("")
+            elif role == "assistant":
+                lines.append(f"**AI:** {content}")
+                lines.append("")
+        lines.append("---")
+        lines.append("*Exported from Voice Debugger*")
+        return "\n".join(lines)
+
     def search_sessions(self, query: str) -> list[dict]:
         """Search session previews and message content for a query string."""
         query_lower = query.lower()

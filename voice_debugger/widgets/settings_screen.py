@@ -7,9 +7,36 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Button, Collapsible, Input, Label, Select, Switch
+from textual.widgets import Button, Collapsible, Input, Label, Select, Static, Switch
 
 from voice_debugger.config import Config
+
+THEMES = [
+    ("Textual Dark", "textual-dark"),
+    ("Textual Light", "textual-light"),
+    ("Dracula", "dracula"),
+    ("Monokai", "monokai"),
+    ("Nord", "nord"),
+    ("Tokyo Night", "tokyo-night"),
+    ("Catppuccin Mocha", "catppuccin-mocha"),
+    ("Catppuccin Latte", "catppuccin-latte"),
+    ("Gruvbox", "gruvbox"),
+    ("Rose Pine", "rose-pine"),
+    ("Rose Pine Moon", "rose-pine-moon"),
+    ("Rose Pine Dawn", "rose-pine-dawn"),
+    ("Solarized Dark", "solarized-dark"),
+    ("Solarized Light", "solarized-light"),
+    ("Atom One Dark", "atom-one-dark"),
+    ("Atom One Light", "atom-one-light"),
+    ("Flexoki", "flexoki"),
+    ("ANSI", "textual-ansi"),
+]
+
+KEYBINDINGS_TEXT = """\
+[cyan]Space[/]  Talk          [cyan]1[/]-[cyan]5[/]  Tabs          [cyan]q[/]    Quit
+[cyan]t[/]      Tree/Source   [cyan]o[/]    Open project  [cyan]Esc[/]  Close modal
+[cyan]h[/]      History       [cyan]s[/]    Settings      [cyan]e[/]    Export
+[cyan]F5[/]     Continue      [cyan]F10[/]  Step over     [cyan]F11[/]  Step into"""
 
 
 class SettingsScreen(ModalScreen[Config | None]):
@@ -21,7 +48,7 @@ class SettingsScreen(ModalScreen[Config | None]):
     }
 
     #settings-container {
-        width: 70;
+        width: 86;
         height: 85%;
         border: thick $accent;
         background: $surface;
@@ -36,14 +63,36 @@ class SettingsScreen(ModalScreen[Config | None]):
         margin-bottom: 1;
     }
 
-    .settings-label {
+    .field-label {
         margin-top: 1;
         margin-bottom: 0;
     }
 
-    .settings-hint {
-        color: $text-muted;
-        margin-bottom: 1;
+    .switch-row {
+        height: auto;
+        margin-top: 1;
+    }
+
+    .switch-row Label {
+        width: auto;
+        margin-right: 2;
+        padding-top: 1;
+    }
+
+    .inline-fields {
+        height: auto;
+        margin-top: 1;
+    }
+
+    .inline-fields Vertical {
+        width: 1fr;
+        height: auto;
+        margin-right: 1;
+    }
+
+    #keybindings-ref {
+        padding: 1 2;
+        height: auto;
     }
 
     #settings-buttons {
@@ -69,20 +118,17 @@ class SettingsScreen(ModalScreen[Config | None]):
         with Vertical(id="settings-container"):
             yield Label("Settings", id="settings-title")
 
-            with Collapsible(title="AI Configuration", collapsed=False):
-                yield Label("API Key:", classes="settings-label")
+            # ── AI ────────────────────────────────────
+            with Collapsible(title="AI", collapsed=False):
+                yield Label("API Key", classes="field-label")
                 yield Input(
                     value=self._config.api_key,
                     password=True,
                     placeholder="sk-ant-...",
                     id="setting-api-key",
                 )
-                yield Label(
-                    "Your Anthropic API key. Stored locally.",
-                    classes="settings-hint",
-                )
 
-                yield Label("Model:", classes="settings-label")
+                yield Label("Model", classes="field-label")
                 yield Select(
                     [
                         ("Claude Sonnet 4.5", "claude-sonnet-4-5-20250929"),
@@ -93,60 +139,66 @@ class SettingsScreen(ModalScreen[Config | None]):
                     allow_blank=False,
                 )
 
-                yield Label("Auto-Compaction:", classes="settings-label")
-                yield Switch(
-                    value=self._config.compaction_enabled,
-                    id="setting-compaction",
-                )
-                yield Label(
-                    "Automatically summarize long conversations to stay within context limits.",
-                    classes="settings-hint",
+                with Horizontal(classes="switch-row"):
+                    yield Label("Auto-Compaction")
+                    yield Switch(
+                        value=self._config.compaction_enabled,
+                        id="setting-compaction",
+                    )
+
+            # ── Appearance ────────────────────────────
+            with Collapsible(title="Appearance", collapsed=False):
+                yield Label("Theme", classes="field-label")
+                yield Select(
+                    THEMES,
+                    value=self._config.theme,
+                    id="setting-theme",
+                    allow_blank=False,
                 )
 
-                yield Label("Compaction Threshold (tokens):", classes="settings-label")
-                yield Input(
-                    value=str(self._config.compaction_threshold),
-                    id="setting-compaction-threshold",
-                    type="integer",
-                )
-                yield Label(
-                    "Compact when conversation exceeds this many tokens. Default: 100,000.",
-                    classes="settings-hint",
-                )
-
-            with Collapsible(title="Voice Configuration"):
-                yield Label("Whisper Model:", classes="settings-label")
+            # ── Voice ────────────────────────────────
+            with Collapsible(title="Voice"):
+                yield Label("Whisper Model", classes="field-label")
                 yield Select(
                     [
-                        ("tiny.en (fastest, least accurate)", "tiny.en"),
-                        ("base.en (balanced)", "base.en"),
-                        ("small.en (best quality, slower)", "small.en"),
+                        ("tiny.en  — fastest", "tiny.en"),
+                        ("base.en  — balanced", "base.en"),
+                        ("small.en — best quality", "small.en"),
                     ],
                     value=self._config.whisper_model,
                     id="setting-whisper",
                     allow_blank=False,
                 )
 
-                yield Label("Silence Threshold:", classes="settings-label")
-                yield Input(
-                    value=str(self._config.silence_threshold),
-                    id="setting-silence-threshold",
-                )
-                yield Label(
-                    "Volume level below which audio is considered silence. Default: 0.02.",
-                    classes="settings-hint",
-                )
+                with Horizontal(classes="inline-fields"):
+                    with Vertical():
+                        yield Label("Silence Threshold", classes="field-label")
+                        yield Input(
+                            value=str(self._config.silence_threshold),
+                            placeholder="0.02",
+                            id="setting-silence-threshold",
+                        )
+                    with Vertical():
+                        yield Label("Silence Duration (s)", classes="field-label")
+                        yield Input(
+                            value=str(self._config.silence_duration),
+                            placeholder="1.5",
+                            id="setting-silence-duration",
+                        )
+                    with Vertical():
+                        yield Label("Sample Rate (Hz)", classes="field-label")
+                        yield Input(
+                            value=str(self._config.sample_rate),
+                            placeholder="16000",
+                            id="setting-sample-rate",
+                            type="integer",
+                        )
 
-                yield Label("Silence Duration (seconds):", classes="settings-label")
-                yield Input(
-                    value=str(self._config.silence_duration),
-                    id="setting-silence-duration",
-                )
-                yield Label(
-                    "How long silence must last before stopping recording. Default: 1.5s.",
-                    classes="settings-hint",
-                )
+            # ── Keyboard Shortcuts ────────────────────
+            with Collapsible(title="Keyboard Shortcuts"):
+                yield Static(KEYBINDINGS_TEXT, id="keybindings-ref", markup=True)
 
+            # ── Buttons ──────────────────────────────
             with Horizontal(id="settings-buttons"):
                 yield Button("Save", variant="primary", id="settings-save")
                 yield Button("Cancel", variant="default", id="settings-cancel")
@@ -168,12 +220,11 @@ class SettingsScreen(ModalScreen[Config | None]):
                 ai_model=self.query_one("#setting-model", Select).value,
                 api_key=self.query_one("#setting-api-key", Input).value,
                 compaction_enabled=self.query_one("#setting-compaction", Switch).value,
-                compaction_threshold=int(
-                    self.query_one("#setting-compaction-threshold", Input).value or "100000"
-                ),
-                max_compactions=self._config.max_compactions,
+                theme=self.query_one("#setting-theme", Select).value,
                 whisper_model=self.query_one("#setting-whisper", Select).value,
-                sample_rate=self._config.sample_rate,
+                sample_rate=int(
+                    self.query_one("#setting-sample-rate", Input).value or "16000"
+                ),
                 silence_threshold=float(
                     self.query_one("#setting-silence-threshold", Input).value or "0.02"
                 ),

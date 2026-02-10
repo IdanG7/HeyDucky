@@ -40,6 +40,13 @@ Available debugger functions (use naturally, don't announce):
 - get_call_stack()
 - read_source(file, line, context?)
 - run_git_command(command)
+
+CONDITIONAL BREAKPOINTS:
+When the user says "break when X", "stop if Y", "pause when Z":
+- "when x is greater than 10" -> condition: "x > 10"
+- "if name is none" -> condition: "name is None"
+- "only when count equals zero" -> condition: "count == 0"
+Translate natural language comparisons to Python expressions.
 """
 
 _REPLACEMENTS = {

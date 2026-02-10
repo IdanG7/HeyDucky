@@ -49,7 +49,9 @@ class ToolExecutor:
             bps = resp.body.get("breakpoints", [])
             verified = all(bp.get("verified", False) for bp in bps)
             status = "verified" if verified else "pending"
-            return f"Breakpoint set at {args['file']}:{args['line']} ({status})"
+            condition = args.get("condition", "")
+            cond_text = f" when {condition}" if condition else ""
+            return f"Breakpoint set at {args['file']}:{args['line']}{cond_text} ({status})"
         return f"Failed to set breakpoint: {resp.message}"
 
     # ------------------------------------------------------------------

@@ -83,6 +83,40 @@ def test_search_sessions(history_dir):
     assert len(results_all) >= 1
 
 
+def test_export_current_markdown_empty(chat_history):
+    """export_current_markdown returns empty string when no messages."""
+    assert chat_history.export_current_markdown() == ""
+
+
+def test_export_current_markdown_formats_messages(chat_history):
+    """export_current_markdown formats user and assistant messages correctly."""
+    chat_history.add("user", "What is this bug?")
+    chat_history.add("assistant", "It looks like a null pointer.")
+
+    md = chat_history.export_current_markdown()
+
+    assert "**You:** What is this bug?" in md
+    assert "**AI:** It looks like a null pointer." in md
+
+
+def test_export_current_markdown_includes_session_id(chat_history):
+    """export_current_markdown includes the session_id in the header."""
+    chat_history.add("user", "Hello")
+
+    md = chat_history.export_current_markdown()
+
+    assert f"# Debug Session: {chat_history.session_id}" in md
+
+
+def test_export_current_markdown_ends_with_footer(chat_history):
+    """export_current_markdown ends with 'Exported from Voice Debugger'."""
+    chat_history.add("user", "Hello")
+
+    md = chat_history.export_current_markdown()
+
+    assert md.endswith("*Exported from Voice Debugger*")
+
+
 def _create_session(history_dir: Path, name: str, created: datetime):
     """Helper: create a fake session file with a specific created date."""
     history_dir.mkdir(parents=True, exist_ok=True)

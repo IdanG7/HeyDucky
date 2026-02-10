@@ -64,21 +64,40 @@ class VoiceHandler:
         self._audio_buffer: list[np.ndarray] = []
         self._stream: sd.InputStream | None = None
         self._lock = threading.Lock()
+        self._error: str | None = None
+        self._overflow_count: int = 0
+
+    @property
+    def last_error(self) -> str | None:
+        """Return and clear the last error message."""
+        err = self._error
+        self._error = None
+        return err
 
     def start_recording(self) -> None:
         """Start recording audio from microphone."""
         if self._is_recording:
             return
         self._audio_buffer = []
+        self._overflow_count = 0
         self._is_recording = True
-        self._stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=1,
-            dtype="float32",
-            callback=self._audio_callback,
-            blocksize=1024,
-        )
-        self._stream.start()
+        try:
+            self._stream = sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="float32",
+                callback=self._audio_callback,
+                blocksize=1024,
+            )
+            self._stream.start()
+        except sd.PortAudioError as e:
+            self._is_recording = False
+            self._stream = None
+            self._error = f"Microphone error: {e}"
+        except Exception as e:
+            self._is_recording = False
+            self._stream = None
+            self._error = f"Could not start recording: {e}"
 
     def stop_recording(self) -> np.ndarray:
         """Stop recording and return the audio buffer.
@@ -88,9 +107,13 @@ class VoiceHandler:
         """
         self._is_recording = False
         if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+            try:
+                self._stream.stop()
+                self._stream.close()
+            except Exception as e:
+                self._error = f"Error stopping recording: {e}"
+            finally:
+                self._stream = None
 
         with self._lock:
             if not self._audio_buffer:
@@ -111,20 +134,36 @@ class VoiceHandler:
         """
         if len(audio) == 0:
             return ""
-        segments, _info = self._model.transcribe(audio, beam_size=5, language="en")
-        text = " ".join(seg.text for seg in segments)
-        return text.strip()
+        try:
+            segments, _info = self._model.transcribe(audio, beam_size=5, language="en")
+            text = " ".join(seg.text for seg in segments)
+            return text.strip()
+        except Exception as e:
+            self._error = f"Transcription failed: {e}"
+            return ""
+
+    def get_current_rms(self) -> float:
+        """Return RMS level of most recent audio chunk, normalized 0.0 to 1.0."""
+        with self._lock:
+            if not self._audio_buffer:
+                return 0.0
+            latest = self._audio_buffer[-1]
+        rms = float(np.sqrt(np.mean(latest ** 2)))
+        return min(1.0, rms * 10)  # Scale up and clamp to 0-1
 
     @property
     def is_recording(self) -> bool:
         return self._is_recording
 
     def _audio_callback(
-        self, indata: np.ndarray, frames: int, time_info: object, status: object
+        self, indata: np.ndarray, frames: int, time_info: object, status: sd.CallbackFlags
     ) -> None:
         """sounddevice callback - runs in audio thread."""
         if status:
-            pass  # Could log status warnings
+            if status.input_overflow:
+                self._overflow_count += 1
+                if self._overflow_count >= 10:
+                    self._error = "Microphone may have disconnected"
         if self._is_recording:
             with self._lock:
                 self._audio_buffer.append(indata.copy())
