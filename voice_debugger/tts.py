@@ -100,6 +100,7 @@ class TTSHandler:
                     text=text,
                     voice_id=self._voice_id,
                     model_id=self._model_id,
+                    output_format="mp3_22050_32",
                 )
                 play_stream(audio_stream)
             except Exception:

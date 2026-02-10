@@ -143,6 +143,7 @@ class TestTTSHandler:
             text="Hello",
             voice_id="JBFqnCBsd6RMkjVDRZzb",
             model_id="eleven_flash_v2_5",
+            output_format="mp3_22050_32",
         )
 
     def test_speak_skips_empty(self, mock_elevenlabs):
@@ -225,6 +226,7 @@ class TestTTSHandler:
             text="Test speech",
             voice_id="JBFqnCBsd6RMkjVDRZzb",
             model_id="eleven_flash_v2_5",
+            output_format="mp3_22050_32",
         )
         mock_elevenlabs["stream"].assert_called_with(mock_audio)
 

@@ -405,18 +405,30 @@ class VoiceDebuggerApp(App):
 
     @work(thread=True, exclusive=True, group="voice-init")
     def _init_voice_worker(self) -> None:
-        """Load Whisper model in background thread."""
-        try:
-            from voice_debugger.voice import VoiceHandler
+        """Load Whisper model in background thread.
 
-            self._voice = VoiceHandler(
-                whisper_model=self.config.whisper_model,
-                sample_rate=self.config.sample_rate,
-                silence_threshold=self.config.silence_threshold,
-            )
-            self.call_from_thread(self._on_voice_ready)
-        except Exception as e:
-            self.call_from_thread(self._on_voice_error, str(e))
+        Retries up to 3 times to work around intermittent subprocess
+        errors (e.g. 'bad value in fds_to_keep' on Python 3.14).
+        """
+        import time
+
+        from voice_debugger.voice import VoiceHandler
+
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                self._voice = VoiceHandler(
+                    whisper_model=self.config.whisper_model,
+                    sample_rate=self.config.sample_rate,
+                    silence_threshold=self.config.silence_threshold,
+                )
+                self.call_from_thread(self._on_voice_ready)
+                return
+            except Exception as e:
+                last_err = e
+                time.sleep(0.5 * (attempt + 1))
+
+        self.call_from_thread(self._on_voice_error, str(last_err))
 
     def _init_tts(self) -> None:
         """Initialize TTS handler if enabled and configured."""
