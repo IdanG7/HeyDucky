@@ -56,10 +56,13 @@ class VoiceHandler:
         whisper_model: str = "base.en",
         sample_rate: int = 16000,
         silence_threshold: float = 0.02,
+        preloaded_model: WhisperModel | None = None,
     ):
         self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold
-        self._model = WhisperModel(whisper_model, device="cpu", compute_type="int8")
+        self._model = preloaded_model or WhisperModel(
+            whisper_model, device="cpu", compute_type="int8"
+        )
         self._is_recording = False
         self._audio_buffer: list[np.ndarray] = []
         self._stream: sd.InputStream | None = None

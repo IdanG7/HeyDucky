@@ -92,6 +92,19 @@ class VoiceDebuggerApp(App):
         self._voice_level_timer = None
         self._tts = None
         self._tts_buffer = ""
+        self._preloaded_whisper = None
+
+        # Pre-load Whisper model on the main thread (before Textual event loop)
+        # to avoid "bad value in fds_to_keep" errors when ctranslate2 initializes
+        # inside a worker thread on Python 3.13+.
+        try:
+            from faster_whisper import WhisperModel
+
+            self._preloaded_whisper = WhisperModel(
+                self.config.whisper_model, device="cpu", compute_type="int8"
+            )
+        except Exception:
+            pass  # Will fall back to loading in worker thread
 
         # Determine project root
         if project:
@@ -405,30 +418,20 @@ class VoiceDebuggerApp(App):
 
     @work(thread=True, exclusive=True, group="voice-init")
     def _init_voice_worker(self) -> None:
-        """Load Whisper model in background thread.
+        """Initialize VoiceHandler, using pre-loaded Whisper model if available."""
+        try:
+            from voice_debugger.voice import VoiceHandler
 
-        Retries up to 3 times to work around intermittent subprocess
-        errors (e.g. 'bad value in fds_to_keep' on Python 3.14).
-        """
-        import time
-
-        from voice_debugger.voice import VoiceHandler
-
-        last_err: Exception | None = None
-        for attempt in range(3):
-            try:
-                self._voice = VoiceHandler(
-                    whisper_model=self.config.whisper_model,
-                    sample_rate=self.config.sample_rate,
-                    silence_threshold=self.config.silence_threshold,
-                )
-                self.call_from_thread(self._on_voice_ready)
-                return
-            except Exception as e:
-                last_err = e
-                time.sleep(0.5 * (attempt + 1))
-
-        self.call_from_thread(self._on_voice_error, str(last_err))
+            self._voice = VoiceHandler(
+                whisper_model=self.config.whisper_model,
+                sample_rate=self.config.sample_rate,
+                silence_threshold=self.config.silence_threshold,
+                preloaded_model=self._preloaded_whisper,
+            )
+            self._preloaded_whisper = None  # Hand off ownership
+            self.call_from_thread(self._on_voice_ready)
+        except Exception as e:
+            self.call_from_thread(self._on_voice_error, str(e))
 
     def _init_tts(self) -> None:
         """Initialize TTS handler if enabled and configured."""

@@ -2,9 +2,18 @@
 """CLI entry point for voice-debugger."""
 
 import argparse
+import multiprocessing
 
 
 def main():
+    # Must be set before any other multiprocessing usage.
+    # Prevents "bad value in fds_to_keep" when ctranslate2/faster-whisper
+    # initializes inside a worker thread (e.g. Textual @work).
+    try:
+        multiprocessing.set_start_method("spawn")
+    except RuntimeError:
+        pass  # Already set
+
     parser = argparse.ArgumentParser(
         description="Voice-controlled AI debugging assistant"
     )
