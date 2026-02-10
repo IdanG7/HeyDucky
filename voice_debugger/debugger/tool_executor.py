@@ -21,6 +21,8 @@ class ToolExecutor:
     def __init__(self, dap_client: DAPClient | None, project_root: str | None = None) -> None:
         self._dap = dap_client
         self._project_root = project_root
+        self._on_watch: callable | None = None
+        self._on_unwatch: callable | None = None
 
     async def execute(self, tool_call: ToolCall) -> str:
         """Execute a tool call and return a human-readable result string."""
@@ -31,8 +33,9 @@ class ToolExecutor:
         if handler is None:
             return f"Unknown tool: {name}"
 
-        # Git commands don't need DAP client
-        if name != "run_git_command" and self._dap is None:
+        # Some tools don't need a DAP client
+        no_dap_tools = {"run_git_command", "watch_variable", "unwatch_variable"}
+        if name not in no_dap_tools and self._dap is None:
             return f"No debug session active. Cannot execute {name}."
 
         return await handler(args)
@@ -140,3 +143,19 @@ class ToolExecutor:
             return executor.run(args["command"])
         except GitCommandBlocked as e:
             return f"Blocked: {e}"
+
+    # ------------------------------------------------------------------
+    # Variable watch panel
+    # ------------------------------------------------------------------
+
+    async def _exec_watch_variable(self, args: dict) -> str:
+        name = args["name"]
+        if self._on_watch:
+            self._on_watch(name)
+        return f"Now watching: {name}"
+
+    async def _exec_unwatch_variable(self, args: dict) -> str:
+        name = args["name"]
+        if self._on_unwatch:
+            self._on_unwatch(name)
+        return f"Stopped watching: {name}"

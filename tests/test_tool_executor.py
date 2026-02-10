@@ -269,3 +269,66 @@ async def test_execute_git_no_project_root(mock_dap):
         ToolCall(id="g3", name="run_git_command", arguments={"command": "status"})
     )
     assert "no project" in result.lower()
+
+
+# ------------------------------------------------------------------
+# Watch / unwatch variable
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_execute_watch_variable(mock_dap):
+    """ToolExecutor handles watch_variable and calls the callback."""
+    watched = []
+    executor = ToolExecutor(mock_dap)
+    executor._on_watch = lambda name: watched.append(name)
+    result = await executor.execute(
+        ToolCall(id="w1", name="watch_variable", arguments={"name": "x"})
+    )
+    assert result == "Now watching: x"
+    assert watched == ["x"]
+
+
+@pytest.mark.asyncio
+async def test_execute_unwatch_variable(mock_dap):
+    """ToolExecutor handles unwatch_variable and calls the callback."""
+    unwatched = []
+    executor = ToolExecutor(mock_dap)
+    executor._on_unwatch = lambda name: unwatched.append(name)
+    result = await executor.execute(
+        ToolCall(id="w2", name="unwatch_variable", arguments={"name": "x"})
+    )
+    assert result == "Stopped watching: x"
+    assert unwatched == ["x"]
+
+
+@pytest.mark.asyncio
+async def test_watch_variable_no_dap_needed():
+    """watch_variable works without a DAP client."""
+    executor = ToolExecutor(None)
+    executor._on_watch = lambda name: None
+    result = await executor.execute(
+        ToolCall(id="w3", name="watch_variable", arguments={"name": "y"})
+    )
+    assert result == "Now watching: y"
+
+
+@pytest.mark.asyncio
+async def test_unwatch_variable_no_dap_needed():
+    """unwatch_variable works without a DAP client."""
+    executor = ToolExecutor(None)
+    executor._on_unwatch = lambda name: None
+    result = await executor.execute(
+        ToolCall(id="w4", name="unwatch_variable", arguments={"name": "y"})
+    )
+    assert result == "Stopped watching: y"
+
+
+@pytest.mark.asyncio
+async def test_watch_variable_no_callback(mock_dap):
+    """watch_variable still returns result even without a callback."""
+    executor = ToolExecutor(mock_dap)
+    result = await executor.execute(
+        ToolCall(id="w5", name="watch_variable", arguments={"name": "z"})
+    )
+    assert result == "Now watching: z"

@@ -40,6 +40,8 @@ Available debugger functions (use naturally, don't announce):
 - get_call_stack()
 - read_source(file, line, context?)
 - run_git_command(command)
+- watch_variable(name)
+- unwatch_variable(name)
 
 CONDITIONAL BREAKPOINTS:
 When the user says "break when X", "stop if Y", "pause when Z":

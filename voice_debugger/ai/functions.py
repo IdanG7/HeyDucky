@@ -100,4 +100,32 @@ DEBUGGER_TOOLS = [
             "required": ["command"],
         },
     },
+    {
+        "name": "watch_variable",
+        "description": "Pin a variable to the watch panel so it auto-refreshes on each debug step",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Variable name to watch",
+                },
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "unwatch_variable",
+        "description": "Remove a variable from the watch panel",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Variable name to unwatch",
+                },
+            },
+            "required": ["name"],
+        },
+    },
 ]
