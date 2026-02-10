@@ -6,28 +6,36 @@ from __future__ import annotations
 from pathlib import Path
 
 from textual.reactive import reactive
-from textual.widgets import Static
+from textual.widgets import RichLog
+from rich.text import Text
 
 
-class SourceView(Static):
+class SourceView(RichLog):
     """Displays source code with syntax highlighting, breakpoints, and current line."""
 
     DEFAULT_CSS = """
     SourceView {
         height: 1fr;
         border: solid $primary;
-        overflow-y: auto;
+    }
+
+    SourceView:focus {
+        border: solid $accent;
     }
     """
 
     current_line = reactive(0)
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(markup=True, wrap=False, **kwargs)
         self.file_path: str | None = None
         self._source_lines: list[str] = []
         self._source_text: str = ""
         self.breakpoint_lines: set[int] = set()
+
+    def on_mount(self) -> None:
+        """Show initial hints."""
+        self._refresh_display()
 
     def load_source(self, file_path: str, content: str | None = None) -> None:
         """Load a source file for display."""
@@ -56,15 +64,40 @@ class SourceView(Static):
 
     def _refresh_display(self) -> None:
         """Re-render the source display."""
+        self.clear()
         if not self._source_text or not self.file_path:
-            self.update("No file loaded. Start a debug session to view source.")
+            self.write(Text.from_markup(
+                "[bold]Your Code, Annotated Live[/bold]\n\n"
+                "[dim]I'll highlight exactly where your program is and what's\n"
+                "happening — breakpoints, current line, everything.\n\n"
+                "Pick a file from the tree, or just start debugging\n"
+                "and I'll open the right file automatically.\n\n"
+                "  [cyan]\u25cf[/cyan]  Breakpoint    [yellow]\u2192[/yellow]  You are here\n\n"
+                "Quick keys:\n"
+                "  [bold]t[/bold]  Jump between tree & source\n"
+                "  [bold]o[/bold]  Switch project\n"
+                "  [bold]F5[/bold] Continue  [bold]F10[/bold] Step over  [bold]F11[/bold] Step in[/dim]"
+            ))
             return
 
-        # Build annotated source with gutter
-        lines: list[str] = []
-        for i, line in enumerate(self._source_lines, 1):
-            bp = "\u25cf " if i in self.breakpoint_lines else "  "
-            arrow = "\u2192" if i == self.current_line else " "
-            lines.append(f"{bp}{arrow} {i:4d} | {line}")
+        # Add file header
+        header = Text()
+        header.append(f" {Path(self.file_path).name} ", style="bold reverse")
+        header.append(f"  {self.file_path}", style="dim")
+        self.write(header)
+        self.write(Text(""))  # blank separator line
 
-        self.update("\n".join(lines))
+        # Build annotated source with gutter
+        for i, line in enumerate(self._source_lines, 1):
+            text = Text()
+            if i in self.breakpoint_lines:
+                text.append("\u25cf ", style="cyan bold")
+            else:
+                text.append("  ")
+            if i == self.current_line:
+                text.append("\u2192", style="yellow bold")
+            else:
+                text.append(" ")
+            text.append(f" {i:4d} \u2502 ", style="dim")
+            text.append(line)
+            self.write(text)

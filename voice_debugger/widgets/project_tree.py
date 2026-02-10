@@ -49,11 +49,11 @@ class ProjectTree(DirectoryTree):
             and p.suffix not in IGNORE_EXTENSIONS
         ]
 
-    def reveal_path(self, path: str | Path) -> None:
+    def reveal_path(self, path: str | Path) -> bool:
         """Expand the tree to reveal and highlight a file path.
 
         Walks the tree nodes to expand directories along the path.
-        If the path is outside the tree root, this is a no-op.
+        Returns True if the path is inside the project tree, False otherwise.
         """
         target = Path(path).resolve()
         root = Path(str(self.path)).resolve()
@@ -62,7 +62,8 @@ class ProjectTree(DirectoryTree):
         try:
             target.relative_to(root)
         except ValueError:
-            return  # Path is outside the tree
+            return False  # Path is outside the tree
 
         # Reload to ensure fresh state, then let Textual handle the rest
         self.reload()
+        return True
