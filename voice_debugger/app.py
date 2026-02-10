@@ -222,6 +222,7 @@ class VoiceDebuggerApp(App):
         if result is None:
             return
 
+        old_config = self.config
         result.save()
         self.config = result
 
@@ -235,9 +236,49 @@ class VoiceDebuggerApp(App):
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Settings saved.")
 
-        # Update orchestrator compaction toggle if it exists
-        if self._orchestrator:
-            self._orchestrator._compaction_enabled = result.compaction_enabled
+        # Rebuild AI provider if key or model changed
+        api_key_changed = result.api_key != old_config.api_key
+        model_changed = result.ai_model != old_config.ai_model
+
+        if api_key_changed or model_changed:
+            api_key = result.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+            if api_key:
+                from voice_debugger.ai.claude import ClaudeProvider
+                from voice_debugger.ai.orchestrator import Orchestrator
+
+                provider = ClaudeProvider(api_key=api_key, model=result.ai_model)
+
+                # Preserve tool executor from old orchestrator
+                old_executor = None
+                if self._orchestrator:
+                    old_executor = self._orchestrator._tool_executor
+
+                self._orchestrator = Orchestrator(
+                    provider=provider,
+                    compaction_enabled=result.compaction_enabled,
+                )
+                self._orchestrator._on_compaction = self._on_compaction_occurred
+                if old_executor:
+                    self._orchestrator._tool_executor = old_executor
+
+                conv.add_system_message(f"AI provider updated: {result.ai_model}")
+            else:
+                self._orchestrator = None
+                conv.add_system_message("No API key set. AI features disabled.")
+        else:
+            # Just update compaction toggle
+            if self._orchestrator:
+                self._orchestrator._compaction_enabled = result.compaction_enabled
+
+        # Rebuild voice handler if whisper model or sample rate changed
+        whisper_changed = result.whisper_model != old_config.whisper_model
+        sample_rate_changed = result.sample_rate != old_config.sample_rate
+        threshold_changed = result.silence_threshold != old_config.silence_threshold
+
+        if whisper_changed or sample_rate_changed or threshold_changed:
+            self._voice = None
+            self._init_voice_worker()
+            conv.add_system_message("Voice engine reloading...")
 
     def action_export_session(self) -> None:
         """Export the current conversation as a markdown file."""
@@ -544,11 +585,12 @@ class VoiceDebuggerApp(App):
             stack_view.update_frames(frames)
 
             # Sync file tree
-            try:
-                tree = self.query_one("#project-tree", ProjectTree)
-                tree.reveal_path(file_path)
-            except Exception:
-                pass  # Tree may not be ready
+            tree = self.query_one("#project-tree", ProjectTree)
+            if not tree.reveal_path(file_path):
+                conv = self.query_one("#conversation-view", ConversationView)
+                conv.add_system_message(
+                    f"Stepped into: {Path(file_path).name} (external)"
+                )
 
             # Switch to source tab
             self.query_one(TabbedContent).active = "source"
