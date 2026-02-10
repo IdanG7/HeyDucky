@@ -74,6 +74,7 @@ class VoiceDebuggerApp(App):
         Binding("h", "show_history", "History", show=False, priority=True),
         Binding("s", "show_settings", "Settings", show=False, priority=True),
         Binding("e", "export_session", "Export", show=False, priority=True),
+        Binding("m", "toggle_tts", "Mute", show=False, priority=True),
         Binding("f5", "debug_continue", "Continue", show=False),
         Binding("f10", "debug_step_over", "Step Over", show=False),
         Binding("f11", "debug_step_into", "Step Into", show=False),
@@ -89,6 +90,8 @@ class VoiceDebuggerApp(App):
         self._debug_session = None
         self._chat_history = ChatHistory()
         self._voice_level_timer = None
+        self._tts = None
+        self._tts_buffer = ""
 
         # Determine project root
         if project:
@@ -288,6 +291,24 @@ class VoiceDebuggerApp(App):
             self._init_voice_worker()
             conv.add_system_message("Voice engine reloading...")
 
+        # Rebuild TTS handler if TTS settings changed
+        tts_changed = (
+            result.tts_enabled != old_config.tts_enabled
+            or result.tts_api_key != old_config.tts_api_key
+            or result.tts_voice_id != old_config.tts_voice_id
+        )
+        if tts_changed:
+            if self._tts:
+                self._tts.shutdown()
+                self._tts = None
+            self._init_tts()
+            if self._tts:
+                conv.add_system_message("TTS enabled.")
+            elif result.tts_enabled:
+                conv.add_system_message("TTS enabled but no API key set.")
+            else:
+                conv.add_system_message("TTS disabled.")
+
     def action_export_session(self) -> None:
         """Export the current conversation as a markdown file."""
         md = self._chat_history.export_current_markdown()
@@ -336,7 +357,10 @@ class VoiceDebuggerApp(App):
             pass  # Don't crash on restore failure
 
     async def action_quit(self) -> None:
-        """Clean quit -- remove autosave file."""
+        """Clean quit -- shutdown TTS and remove autosave file."""
+        if self._tts:
+            self._tts.shutdown()
+            self._tts = None
         try:
             AUTOSAVE_PATH.unlink(missing_ok=True)
         except Exception:
@@ -372,6 +396,9 @@ class VoiceDebuggerApp(App):
                 "No API key configured. Set ANTHROPIC_API_KEY env var or run with --setup."
             )
 
+        # Initialize TTS if configured
+        self._init_tts()
+
         # Start debug session if target provided
         if self._target:
             self._start_debug_session()
@@ -390,6 +417,32 @@ class VoiceDebuggerApp(App):
             self.call_from_thread(self._on_voice_ready)
         except Exception as e:
             self.call_from_thread(self._on_voice_error, str(e))
+
+    def _init_tts(self) -> None:
+        """Initialize TTS handler if enabled and configured."""
+        if self.config.tts_enabled and self.config.tts_api_key:
+            try:
+                from voice_debugger.tts import TTSHandler
+
+                self._tts = TTSHandler(
+                    api_key=self.config.tts_api_key,
+                    voice_id=self.config.tts_voice_id,
+                )
+            except Exception as e:
+                conv = self.query_one("#conversation-view", ConversationView)
+                conv.add_system_message(f"TTS init failed: {e}")
+                self._tts = None
+
+    def action_toggle_tts(self) -> None:
+        """Toggle TTS mute/unmute."""
+        if self._tts is None:
+            conv = self.query_one("#conversation-view", ConversationView)
+            conv.add_system_message("TTS is not configured. Enable it in Settings.")
+            return
+        new_state = self._tts.toggle()
+        label = "unmuted" if new_state else "muted"
+        conv = self.query_one("#conversation-view", ConversationView)
+        conv.add_system_message(f"TTS {label}.")
 
     def _on_voice_ready(self) -> None:
         conv = self.query_one("#conversation-view", ConversationView)
@@ -536,16 +589,31 @@ class VoiceDebuggerApp(App):
 
     def _start_ai_stream(self) -> None:
         """Begin streaming AI response in the conversation view."""
+        self._tts_buffer = ""
         self.query_one("#conversation-view", ConversationView).start_ai_stream()
 
     def _append_ai_chunk(self, text: str) -> None:
         """Append a text chunk to the streaming AI response."""
         self.query_one("#conversation-view", ConversationView).append_ai_chunk(text)
 
+        # Sentence-level TTS: buffer text and speak on sentence boundaries
+        if self._tts:
+            from voice_debugger.tts import split_sentences
+
+            self._tts_buffer += text
+            sentences, self._tts_buffer = split_sentences(self._tts_buffer)
+            for sentence in sentences:
+                self._tts.speak(sentence)
+
     def _finish_ai_stream(self, full_text: str) -> None:
         """Finish the streaming AI response and record in chat history."""
         self.query_one("#conversation-view", ConversationView).finish_ai_stream()
         self._chat_history.add("assistant", full_text)
+
+        # Speak any remaining buffered text
+        if self._tts and self._tts_buffer.strip():
+            self._tts.speak(self._tts_buffer)
+        self._tts_buffer = ""
 
     def _show_system_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_system_message(text)

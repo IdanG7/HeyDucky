@@ -21,8 +21,9 @@ class Config:
     ai_model: str = "claude-sonnet-4-5-20250929"
     api_key: str = ""
     compaction_enabled: bool = True
-    compaction_threshold: int = 100_000
-    max_compactions: int = 5
+
+    # Appearance
+    theme: str = "textual-dark"
 
     # Voice settings
     whisper_model: str = "base.en"
@@ -30,22 +31,31 @@ class Config:
     silence_threshold: float = 0.02
     silence_duration: float = 1.5
 
+    # TTS settings
+    tts_enabled: bool = False
+    tts_api_key: str = ""
+    tts_voice_id: str = "JBFqnCBsd6RMkjVDRZzb"
+
     @classmethod
     def from_dict(cls, data: dict) -> Config:
         """Create Config from nested dictionary (TOML structure)."""
         ai = data.get("ai", {})
         voice = data.get("voice", {})
+        appearance = data.get("appearance", {})
+        tts = data.get("tts", {})
         return cls(
             ai_provider=ai.get("provider", "claude"),
             ai_model=ai.get("model", "claude-sonnet-4-5-20250929"),
             api_key=ai.get("api_key", ""),
             compaction_enabled=ai.get("compaction_enabled", True),
-            compaction_threshold=ai.get("compaction_threshold", 100_000),
-            max_compactions=ai.get("max_compactions", 5),
+            theme=appearance.get("theme", "textual-dark"),
             whisper_model=voice.get("whisper_model", "base.en"),
             sample_rate=voice.get("sample_rate", 16000),
             silence_threshold=voice.get("silence_threshold", 0.02),
             silence_duration=voice.get("silence_duration", 1.5),
+            tts_enabled=tts.get("enabled", False),
+            tts_api_key=tts.get("api_key", ""),
+            tts_voice_id=tts.get("voice_id", "JBFqnCBsd6RMkjVDRZzb"),
         )
 
     def to_dict(self) -> dict:
@@ -56,14 +66,20 @@ class Config:
                 "model": self.ai_model,
                 "api_key": self.api_key,
                 "compaction_enabled": self.compaction_enabled,
-                "compaction_threshold": self.compaction_threshold,
-                "max_compactions": self.max_compactions,
+            },
+            "appearance": {
+                "theme": self.theme,
             },
             "voice": {
                 "whisper_model": self.whisper_model,
                 "sample_rate": self.sample_rate,
                 "silence_threshold": self.silence_threshold,
                 "silence_duration": self.silence_duration,
+            },
+            "tts": {
+                "enabled": self.tts_enabled,
+                "api_key": self.tts_api_key,
+                "voice_id": self.tts_voice_id,
             },
         }
 

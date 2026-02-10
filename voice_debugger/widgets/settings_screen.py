@@ -36,7 +36,8 @@ KEYBINDINGS_TEXT = """\
 [cyan]Space[/]  Talk          [cyan]1[/]-[cyan]5[/]  Tabs          [cyan]q[/]    Quit
 [cyan]t[/]      Tree/Source   [cyan]o[/]    Open project  [cyan]Esc[/]  Close modal
 [cyan]h[/]      History       [cyan]s[/]    Settings      [cyan]e[/]    Export
-[cyan]F5[/]     Continue      [cyan]F10[/]  Step over     [cyan]F11[/]  Step into"""
+[cyan]m[/]      Mute TTS      [cyan]F5[/]   Continue      [cyan]F10[/]  Step over
+[cyan]F11[/]    Step into"""
 
 
 class SettingsScreen(ModalScreen[Config | None]):
@@ -194,6 +195,30 @@ class SettingsScreen(ModalScreen[Config | None]):
                             type="integer",
                         )
 
+            # ── TTS (Text-to-Speech) ─────────────────
+            with Collapsible(title="TTS (Text-to-Speech)"):
+                with Horizontal(classes="switch-row"):
+                    yield Label("Enable TTS")
+                    yield Switch(
+                        value=self._config.tts_enabled,
+                        id="setting-tts-enabled",
+                    )
+
+                yield Label("ElevenLabs API Key", classes="field-label")
+                yield Input(
+                    value=self._config.tts_api_key,
+                    password=True,
+                    placeholder="sk_...",
+                    id="setting-tts-api-key",
+                )
+
+                yield Label("Voice ID", classes="field-label")
+                yield Input(
+                    value=self._config.tts_voice_id,
+                    placeholder="JBFqnCBsd6RMkjVDRZzb",
+                    id="setting-tts-voice-id",
+                )
+
             # ── Keyboard Shortcuts ────────────────────
             with Collapsible(title="Keyboard Shortcuts"):
                 yield Static(KEYBINDINGS_TEXT, id="keybindings-ref", markup=True)
@@ -231,6 +256,9 @@ class SettingsScreen(ModalScreen[Config | None]):
                 silence_duration=float(
                     self.query_one("#setting-silence-duration", Input).value or "1.5"
                 ),
+                tts_enabled=self.query_one("#setting-tts-enabled", Switch).value,
+                tts_api_key=self.query_one("#setting-tts-api-key", Input).value,
+                tts_voice_id=self.query_one("#setting-tts-voice-id", Input).value,
             )
             self.dismiss(new_config)
         except (ValueError, TypeError):
