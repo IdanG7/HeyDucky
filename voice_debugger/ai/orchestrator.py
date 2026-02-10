@@ -277,6 +277,24 @@ class Orchestrator:
             ],
         })
 
+    def get_state(self) -> dict:
+        """Serialize orchestrator state for auto-save."""
+        return {
+            "history": self._history,
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "total_cost": self.total_cost,
+            "compaction_count": self.compaction_count,
+        }
+
+    def restore_state(self, state: dict) -> None:
+        """Restore orchestrator state from auto-save."""
+        self._history = state.get("history", [])
+        self.total_input_tokens = state.get("total_input_tokens", 0)
+        self.total_output_tokens = state.get("total_output_tokens", 0)
+        self.total_cost = state.get("total_cost", 0.0)
+        self.compaction_count = state.get("compaction_count", 0)
+
     def reset(self) -> None:
         """Clear conversation history and cost tracking."""
         self._history = []

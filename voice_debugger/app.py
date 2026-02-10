@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from voice_debugger.widgets import (
     HistoryScreen,
     SettingsScreen,
 )
+
+AUTOSAVE_PATH = Path.home() / ".config" / "voice-debugger" / "autosave.json"
 
 
 class VoiceDebuggerApp(App):
@@ -129,6 +132,11 @@ class VoiceDebuggerApp(App):
         )
         conv.add_system_message(f"Project: {self._project_root}")
         self._init_components()
+
+        # Restore from auto-save if recent
+        self._try_restore_autosave()
+        # Start auto-save timer
+        self._autosave_timer = self.set_interval(30, self._auto_save_state)
 
     def on_directory_tree_file_selected(
         self, event: ProjectTree.FileSelected
@@ -291,6 +299,49 @@ class VoiceDebuggerApp(App):
         export_path.write_text(md)
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message(f"Session exported to {export_path}")
+
+    def _auto_save_state(self) -> None:
+        """Periodically save orchestrator state for crash recovery."""
+        if self._orchestrator and self._orchestrator._history:
+            try:
+                AUTOSAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                AUTOSAVE_PATH.write_text(json.dumps(self._orchestrator.get_state()))
+            except Exception:
+                pass  # Don't crash on autosave failure
+
+    def _try_restore_autosave(self) -> None:
+        """Restore AI context from autosave if it's recent (< 1 hour)."""
+        if not AUTOSAVE_PATH.exists():
+            return
+        try:
+            import time
+
+            age_seconds = time.time() - AUTOSAVE_PATH.stat().st_mtime
+            if age_seconds > 3600:  # Older than 1 hour
+                AUTOSAVE_PATH.unlink(missing_ok=True)
+                return
+            state = json.loads(AUTOSAVE_PATH.read_text())
+            if self._orchestrator and state.get("history"):
+                self._orchestrator.restore_state(state)
+                conv = self.query_one("#conversation-view", ConversationView)
+                conv.add_system_message("Previous session context restored.")
+                self.query_one(
+                    "#status-bar", VoiceStatusBar
+                ).session_cost = self._orchestrator.total_cost
+                if self._orchestrator.compaction_count:
+                    self.query_one(
+                        "#status-bar", VoiceStatusBar
+                    ).compaction_count = self._orchestrator.compaction_count
+        except Exception:
+            pass  # Don't crash on restore failure
+
+    async def action_quit(self) -> None:
+        """Clean quit -- remove autosave file."""
+        try:
+            AUTOSAVE_PATH.unlink(missing_ok=True)
+        except Exception:
+            pass
+        await super().action_quit()
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
