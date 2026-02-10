@@ -21,6 +21,20 @@ class ConversationView(RichLog):
     def __init__(self, **kwargs):
         super().__init__(markup=True, wrap=True, **kwargs)
 
+    def on_mount(self) -> None:
+        """Show initial hints."""
+        self.write(Text.from_markup(
+            "[bold]Hey! I'm your debugging partner.[/bold]\n\n"
+            "[dim]Press [bold]Space[/bold] and talk to me like a colleague.\n\n"
+            "Try saying:\n"
+            "  \"What's this function doing?\"\n"
+            "  \"Set a breakpoint on line 42\"\n"
+            "  \"Show me the git diff\"\n"
+            "  \"Step into that call\"\n\n"
+            "I can read your code, run git commands, and\n"
+            "control the debugger — all by voice.[/dim]\n"
+        ))
+
     def add_user_message(self, text: str) -> None:
         """Add a user message to the conversation."""
         msg = Text()
@@ -48,3 +62,36 @@ class ConversationView(RichLog):
         if args:
             msg.append(f"({args})", style="dim yellow")
         self.write(msg)
+
+    def start_ai_stream(self) -> None:
+        """Begin streaming an AI response.
+
+        Writes the "AI: " prefix and initializes the stream buffer.
+        Subsequent calls to append_ai_chunk() add text incrementally.
+        """
+        self._stream_buffer = ""
+        self._stream_line_index = len(self.lines)
+        prefix = Text()
+        prefix.append("AI: ", style="bold green")
+        self.write(prefix)
+
+    def append_ai_chunk(self, text: str) -> None:
+        """Append a text chunk to the current streaming AI response.
+
+        Each chunk is written as a new line entry in the RichLog.
+        This provides a simple, correct v1 streaming display.
+        """
+        self._stream_buffer += text
+        if text:
+            chunk = Text(text, style="")
+            self.write(chunk)
+
+    def finish_ai_stream(self) -> str:
+        """Finish the streaming AI response.
+
+        Returns the full accumulated text buffer.
+        """
+        full_text = getattr(self, "_stream_buffer", "")
+        self._stream_buffer = ""
+        self._stream_line_index = 0
+        return full_text

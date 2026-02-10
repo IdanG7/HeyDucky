@@ -113,6 +113,13 @@ class VoiceDebuggerApp(App):
 
     def on_mount(self) -> None:
         """Initialize components after mount."""
+        # Apply saved theme
+        if self.config.theme:
+            try:
+                self.theme = self.config.theme
+            except Exception:
+                pass  # Fallback to default if theme not found
+
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Ready when you are. Press Space and talk to me.")
         conv.add_system_message(
@@ -216,14 +223,19 @@ class VoiceDebuggerApp(App):
         result.save()
         self.config = result
 
+        # Apply theme immediately
+        if result.theme:
+            try:
+                self.theme = result.theme
+            except Exception:
+                pass
+
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Settings saved.")
 
-        # Update orchestrator compaction settings if it exists
+        # Update orchestrator compaction toggle if it exists
         if self._orchestrator:
             self._orchestrator._compaction_enabled = result.compaction_enabled
-            self._orchestrator._compaction_threshold = result.compaction_threshold
-            self._orchestrator._max_compactions = result.max_compactions
 
     def _init_components(self) -> None:
         """Initialize voice and AI components."""
@@ -238,8 +250,6 @@ class VoiceDebuggerApp(App):
             self._orchestrator = Orchestrator(
                 provider=provider,
                 compaction_enabled=self.config.compaction_enabled,
-                compaction_threshold=self.config.compaction_threshold,
-                max_compactions=self.config.max_compactions,
             )
             self._orchestrator._on_compaction = self._on_compaction_occurred
 
@@ -330,7 +340,7 @@ class VoiceDebuggerApp(App):
 
     @work(thread=True, exclusive=True, group="voice-process")
     def _process_recording(self) -> None:
-        """Stop recording, transcribe, and send to AI."""
+        """Stop recording, transcribe, and send to AI with streaming."""
         audio = self._voice.stop_recording()
         if len(audio) == 0:
             self.call_from_thread(self._show_system_message, "No speech detected.")
@@ -348,14 +358,28 @@ class VoiceDebuggerApp(App):
             return
 
         import asyncio
-        response = asyncio.run(self._orchestrator.chat(transcript))
 
-        # Handle tool calls
-        for tc in response.tool_calls:
-            self.call_from_thread(self._show_tool_call, tc.name, tc.arguments)
+        async def _stream():
+            self.call_from_thread(self._start_ai_stream)
 
-        self.call_from_thread(self._show_ai_message, response.text)
-        self.call_from_thread(self._update_cost, self._orchestrator.total_cost)
+            async for event in self._orchestrator.chat_streaming(transcript):
+                if event.type == "text":
+                    self.call_from_thread(self._append_ai_chunk, event.text)
+                elif event.type == "tool_call":
+                    if event.tool_call:
+                        self.call_from_thread(
+                            self._show_tool_call,
+                            event.tool_call.name,
+                            event.tool_call.arguments,
+                        )
+                elif event.type == "done":
+                    full_text = event.response.text if event.response else ""
+                    self.call_from_thread(self._finish_ai_stream, full_text)
+                    self.call_from_thread(
+                        self._update_cost, self._orchestrator.total_cost
+                    )
+
+        asyncio.run(_stream())
 
     def _show_user_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_user_message(text)
@@ -364,6 +388,19 @@ class VoiceDebuggerApp(App):
     def _show_ai_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_ai_message(text)
         self._chat_history.add("assistant", text)
+
+    def _start_ai_stream(self) -> None:
+        """Begin streaming AI response in the conversation view."""
+        self.query_one("#conversation-view", ConversationView).start_ai_stream()
+
+    def _append_ai_chunk(self, text: str) -> None:
+        """Append a text chunk to the streaming AI response."""
+        self.query_one("#conversation-view", ConversationView).append_ai_chunk(text)
+
+    def _finish_ai_stream(self, full_text: str) -> None:
+        """Finish the streaming AI response and record in chat history."""
+        self.query_one("#conversation-view", ConversationView).finish_ai_stream()
+        self._chat_history.add("assistant", full_text)
 
     def _show_system_message(self, text: str) -> None:
         self.query_one("#conversation-view", ConversationView).add_system_message(text)

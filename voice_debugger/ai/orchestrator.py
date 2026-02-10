@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncIterator
 
-from voice_debugger.ai.provider import AIProvider, AIResponse
+from voice_debugger.ai.provider import AIProvider, AIResponse, StreamEvent
 from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
 from voice_debugger.ai.functions import DEBUGGER_TOOLS
 
 if TYPE_CHECKING:
     from voice_debugger.debugger.tool_executor import ToolExecutor
+
+# Known model context windows (tokens)
+MODEL_CONTEXT_WINDOWS: dict[str, int] = {
+    "claude-sonnet-4-5-20250929": 200_000,
+    "claude-haiku-3-5-20241022": 200_000,
+}
+DEFAULT_CONTEXT_WINDOW = 200_000
+
+# Compaction triggers at 80% of context window; max 3 compactions before
+# quality degrades too much (each summary loses nuance).
+COMPACTION_RATIO = 0.80
+MAX_COMPACTIONS = 3
 
 COMPACTION_PROMPT = """\
 Summarize this debugging conversation concisely. Preserve:
@@ -24,6 +36,12 @@ Format as a concise paragraph. Do NOT use bullet points.
 """
 
 
+def _smart_threshold(model: str) -> int:
+    """Return compaction threshold (tokens) based on model context window."""
+    window = MODEL_CONTEXT_WINDOWS.get(model, DEFAULT_CONTEXT_WINDOW)
+    return int(window * COMPACTION_RATIO)
+
+
 class Orchestrator:
     """Manages conversation with AI provider."""
 
@@ -32,8 +50,6 @@ class Orchestrator:
         provider: AIProvider,
         tool_executor: ToolExecutor | None = None,
         compaction_enabled: bool = True,
-        compaction_threshold: int = 100_000,
-        max_compactions: int = 5,
     ):
         self._provider = provider
         self._tool_executor = tool_executor
@@ -42,8 +58,8 @@ class Orchestrator:
         self.total_output_tokens: int = 0
         self.total_cost: float = 0.0
         self._compaction_enabled = compaction_enabled
-        self._compaction_threshold = compaction_threshold
-        self._max_compactions = max_compactions
+        self._compaction_threshold = _smart_threshold(provider.model_name())
+        self._max_compactions = MAX_COMPACTIONS
         self.compaction_count: int = 0
         self._on_compaction: callable | None = None
 
@@ -98,6 +114,88 @@ class Orchestrator:
                 return response
 
         return response  # Safety: return last response if max rounds hit
+
+    async def chat_streaming(
+        self, user_message: str
+    ) -> AsyncIterator[StreamEvent]:
+        """Stream an AI response, yielding events as they arrive.
+
+        Like chat(), manages history, compaction, and tool call loops.
+        Yields StreamEvent objects:
+          - type="text": incremental text deltas
+          - type="tool_call": a completed tool call (already executed if executor set)
+          - type="done": final AIResponse with full text and usage stats
+
+        The tool call loop works: if Claude makes tool calls during streaming,
+        they are executed and the follow-up response is also streamed.
+        """
+        self._history.append({"role": "user", "content": user_message})
+
+        await self._compact_if_needed()
+
+        max_rounds = 5
+        for _ in range(max_rounds):
+            response = None
+
+            async for event in self._provider.stream_message(
+                messages=list(self._history),
+                system=DEBUGGER_SYSTEM_PROMPT,
+                tools=DEBUGGER_TOOLS,
+            ):
+                if event.type == "text":
+                    yield event
+                elif event.type == "tool_call":
+                    yield event
+                elif event.type == "done":
+                    response = event.response
+
+            if response is None:
+                return  # pragma: no cover
+
+            from voice_debugger.ai.prompts import humanize_response
+
+            response.text = humanize_response(response.text)
+            self._track_usage(response)
+
+            if response.tool_calls:
+                content: list[dict] = []
+                if response.text:
+                    content.append({"type": "text", "text": response.text})
+                for tc in response.tool_calls:
+                    content.append({
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": tc.arguments,
+                    })
+                self._history.append({"role": "assistant", "content": content})
+
+                if self._tool_executor:
+                    tool_results = []
+                    for tc in response.tool_calls:
+                        result = await self._tool_executor.execute(tc)
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": tc.id,
+                            "content": result,
+                        })
+                    self._history.append(
+                        {"role": "user", "content": tool_results}
+                    )
+                    continue  # Stream the follow-up response
+                else:
+                    yield StreamEvent(type="done", response=response)
+                    return
+            else:
+                self._history.append(
+                    {"role": "assistant", "content": response.text}
+                )
+                yield StreamEvent(type="done", response=response)
+                return
+
+        # Safety: yield last response if max rounds hit
+        if response is not None:
+            yield StreamEvent(type="done", response=response)
 
     async def _compact_if_needed(self) -> None:
         """Compact conversation history if token count exceeds threshold."""

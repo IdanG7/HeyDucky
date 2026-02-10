@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from typing import AsyncIterator
+
 from anthropic import AsyncAnthropic
 
-from voice_debugger.ai.provider import AIProvider, AIResponse, ToolCall
+from voice_debugger.ai.provider import AIProvider, AIResponse, StreamEvent, ToolCall
 
 
 class ClaudeProvider(AIProvider):
@@ -55,6 +57,56 @@ class ClaudeProvider(AIProvider):
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
         )
+
+    async def stream_message(
+        self,
+        messages: list[dict],
+        system: str = "",
+        tools: list[dict] | None = None,
+    ) -> AsyncIterator[StreamEvent]:
+        """Stream a response from Claude, yielding events as they arrive."""
+        kwargs: dict = {
+            "model": self._model,
+            "max_tokens": 1024,
+            "messages": messages,
+        }
+        if system:
+            kwargs["system"] = system
+        if tools:
+            kwargs["tools"] = tools
+
+        async with self._client.messages.stream(**kwargs) as stream:
+            async for event in stream:
+                if event.type == "content_block_delta":
+                    if event.delta.type == "text_delta":
+                        yield StreamEvent(type="text", text=event.delta.text)
+
+            # After stream completes, get the full message
+            message = await stream.get_final_message()
+
+        # Extract tool calls from the final message
+        text_parts: list[str] = []
+        tool_calls: list[ToolCall] = []
+
+        for block in message.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+            elif block.type == "tool_use":
+                tc = ToolCall(
+                    id=block.id,
+                    name=block.name,
+                    arguments=block.input,
+                )
+                tool_calls.append(tc)
+                yield StreamEvent(type="tool_call", tool_call=tc)
+
+        response = AIResponse(
+            text=" ".join(text_parts),
+            tool_calls=tool_calls,
+            input_tokens=message.usage.input_tokens,
+            output_tokens=message.usage.output_tokens,
+        )
+        yield StreamEvent(type="done", response=response)
 
     async def count_tokens(
         self,
