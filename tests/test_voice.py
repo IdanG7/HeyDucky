@@ -183,3 +183,50 @@ def test_stop_recording_stream_error():
     error = handler.last_error
     assert error is not None
     assert "Error stopping recording" in error
+
+
+# --- RMS level tests ---
+
+
+def test_get_current_rms_empty_buffer():
+    """get_current_rms returns 0.0 when buffer is empty."""
+    with patch("voice_debugger.voice.WhisperModel"):
+        handler = VoiceHandler(whisper_model="tiny.en")
+        assert handler.get_current_rms() == 0.0
+
+
+def test_get_current_rms_positive_with_audio():
+    """get_current_rms returns a positive value with audio data in buffer."""
+    with patch("voice_debugger.voice.WhisperModel"):
+        handler = VoiceHandler(whisper_model="tiny.en")
+        # Simulate audio data in the buffer
+        audio_chunk = np.random.randn(1024).astype(np.float32) * 0.1
+        handler._audio_buffer.append(audio_chunk)
+        rms = handler.get_current_rms()
+        assert rms > 0.0
+
+
+def test_get_current_rms_clamped_to_one():
+    """get_current_rms is clamped to max 1.0 for very loud audio."""
+    with patch("voice_debugger.voice.WhisperModel"):
+        handler = VoiceHandler(whisper_model="tiny.en")
+        # Very loud audio chunk (amplitude 5.0) -- rms*10 will exceed 1.0
+        loud_chunk = np.ones(1024, dtype=np.float32) * 5.0
+        handler._audio_buffer.append(loud_chunk)
+        rms = handler.get_current_rms()
+        assert rms == 1.0
+
+
+def test_get_current_rms_uses_latest_buffer():
+    """get_current_rms uses the latest (most recent) buffer entry."""
+    with patch("voice_debugger.voice.WhisperModel"):
+        handler = VoiceHandler(whisper_model="tiny.en")
+        # First chunk: silence
+        silent_chunk = np.zeros(1024, dtype=np.float32)
+        # Second chunk: audible signal
+        loud_chunk = np.ones(1024, dtype=np.float32) * 0.5
+        handler._audio_buffer.append(silent_chunk)
+        handler._audio_buffer.append(loud_chunk)
+        rms = handler.get_current_rms()
+        # Should reflect the loud chunk, not the silent one
+        assert rms > 0.0

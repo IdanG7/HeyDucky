@@ -85,6 +85,7 @@ class VoiceDebuggerApp(App):
         self._dap_client = None
         self._debug_session = None
         self._chat_history = ChatHistory()
+        self._voice_level_timer = None
 
         # Determine project root
         if project:
@@ -321,6 +322,10 @@ class VoiceDebuggerApp(App):
 
         if self._voice.is_recording:
             status.is_recording = False
+            status.voice_level = 0.0
+            if self._voice_level_timer:
+                self._voice_level_timer.stop()
+                self._voice_level_timer = None
             self._process_recording()
         else:
             # Clear any stale error before starting
@@ -339,6 +344,15 @@ class VoiceDebuggerApp(App):
                 status.is_recording = False
             else:
                 status.is_recording = True
+                self._voice_level_timer = self.set_interval(
+                    0.1, self._update_voice_level
+                )
+
+    def _update_voice_level(self) -> None:
+        """Poll current RMS level from voice handler and update status bar."""
+        if self._voice and self._voice.is_recording:
+            level = self._voice.get_current_rms()
+            self.query_one("#status-bar", VoiceStatusBar).voice_level = level
 
     def action_debug_continue(self) -> None:
         """Continue debug execution."""

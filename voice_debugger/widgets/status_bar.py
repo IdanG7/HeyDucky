@@ -26,9 +26,15 @@ class VoiceStatusBar(Static):
     debug_file = reactive("")
     debug_line = reactive(0)
     compaction_count = reactive(0)
+    voice_level = reactive(0.0)
 
     def render(self) -> str:
-        mic = "[bold red]Recording...[/]" if self.is_recording else "[dim]Space: Talk[/]"
+        if self.is_recording:
+            bars = int(self.voice_level * 8)
+            meter = "\u2588" * bars + "\u2591" * (8 - bars)
+            mic = f"[bold red]\u25cf REC[/] [{meter}]"
+        else:
+            mic = "[dim]Space: Talk[/]"
         cost = f"${self.session_cost:.4f}"
 
         if self.debug_state == "paused":
