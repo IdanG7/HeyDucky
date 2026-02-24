@@ -8,6 +8,7 @@ stdin/stdout, and exposes a TCP server that accepts one client connection
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 from collections.abc import Callable
@@ -74,19 +75,29 @@ class DAPRelay:
 
     async def stop(self) -> None:
         """Stop the relay, killing the adapter and closing connections."""
+        # Stop accepting new connections first
+        if self._server:
+            self._server.close()
+
+        # Kill the adapter so stdout/stdin reads unblock
+        if self._adapter_proc:
+            with contextlib.suppress(ProcessLookupError):
+                self._adapter_proc.kill()
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(self._adapter_proc.wait(), timeout=3)
+
+        # Cancel relay tasks (may be stuck on I/O that's now dead)
         for task in self._tasks:
             task.cancel()
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+        self._tasks.clear()
+
         if self._client_writer:
             self._client_writer.close()
             self._client_writer = None
-        if self._adapter_proc:
-            try:
-                self._adapter_proc.terminate()
-                await asyncio.wait_for(self._adapter_proc.wait(), timeout=5)
-            except (ProcessLookupError, asyncio.TimeoutError):
-                self._adapter_proc.kill()
+
         if self._server:
-            self._server.close()
             await self._server.wait_closed()
 
     async def wait_for_adapter(self) -> int:

@@ -1,6 +1,7 @@
 """Tests for the DAP relay — bidirectional stdio-to-TCP message bridge."""
 
 import asyncio
+import contextlib
 import json
 import sys
 
@@ -17,8 +18,6 @@ def _make_dap_bytes(msg: dict) -> bytes:
     return header + payload
 
 
-# We use a small Python script as a fake "adapter" that reads a DAP request
-# from stdin and echoes back a DAP response on stdout.
 ECHO_ADAPTER = [
     sys.executable,
     "-c",
@@ -47,10 +46,17 @@ ECHO_ADAPTER = [
 ]
 
 
+async def _close_writer(writer: asyncio.StreamWriter) -> None:
+    """Close a StreamWriter safely, compatible with all Python 3.10+ versions."""
+    writer.close()
+    with contextlib.suppress(asyncio.TimeoutError, ConnectionError, OSError):
+        await asyncio.wait_for(writer.wait_closed(), timeout=2)
+
+
 @pytest.fixture
 async def relay():
     """Start a DAPRelay with the echo adapter and yield (relay, port)."""
-    messages = []
+    messages: list = []
 
     def on_message(direction, msg):
         messages.append((direction, msg))
@@ -63,142 +69,122 @@ async def relay():
     )
     port = await r.start()
     yield r, port, messages
-    await r.stop()
+    await asyncio.wait_for(r.stop(), timeout=10)
 
 
-@pytest.mark.asyncio
-async def test_relay_forwards_request_and_response(relay):
-    """Send a DAP request through the relay and get the echo response back."""
-    _r, port, _messages = relay
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-
-    request = {
-        "seq": 1,
-        "type": "request",
-        "command": "initialize",
-        "arguments": {"clientID": "test"},
-    }
-    writer.write(_make_dap_bytes(request))
-    await writer.drain()
-
-    # Read the echoed response
+async def _read_responses(reader, count=1, timeout=5.0):
+    """Read `count` DAP responses from a reader with a total timeout."""
     buf = b""
-    for _ in range(20):
-        chunk = await asyncio.wait_for(reader.read(4096), timeout=3.0)
-        if not chunk:
+    all_msgs = []
+    deadline = asyncio.get_event_loop().time() + timeout
+    while len(all_msgs) < count:
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
             break
-        buf += chunk
-        msgs, buf = decode_messages(buf)
-        if msgs:
-            resp = msgs[0]
-            assert resp["type"] == "response"
-            assert resp["success"] is True
-            assert resp["command"] == "initialize"
-            assert resp["body"]["echo"] is True
-            break
-    else:
-        pytest.fail("Did not receive response from relay")
-
-    writer.close()
-
-
-@pytest.mark.asyncio
-async def test_relay_logs_messages(relay):
-    """Verify the on_message callback captures messages flowing through."""
-    _r, port, messages = relay
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-
-    request = {
-        "seq": 1,
-        "type": "request",
-        "command": "threads",
-    }
-    writer.write(_make_dap_bytes(request))
-    await writer.drain()
-
-    # Wait for the response to flow back
-    buf = b""
-    for _ in range(20):
-        chunk = await asyncio.wait_for(reader.read(4096), timeout=3.0)
-        if not chunk:
-            break
-        buf += chunk
-        msgs, buf = decode_messages(buf)
-        if msgs:
-            break
-
-    await asyncio.sleep(0.1)
-
-    # Check logged messages
-    directions = [d for d, _ in messages if d in ("client->adapter", "adapter->client")]
-    assert "client->adapter" in directions
-    assert "adapter->client" in directions
-
-    writer.close()
-
-
-@pytest.mark.asyncio
-async def test_relay_rejects_second_client(relay):
-    """Only one client connection should be accepted."""
-    _r, port, _messages = relay
-
-    _reader1, writer1 = await asyncio.open_connection("127.0.0.1", port)
-    await asyncio.sleep(0.1)
-
-    reader2, writer2 = await asyncio.open_connection("127.0.0.1", port)
-    rejection = await asyncio.wait_for(reader2.read(4096), timeout=2.0)
-    assert b"Only one client" in rejection
-
-    writer1.close()
-    writer2.close()
-
-
-@pytest.mark.asyncio
-async def test_relay_multiple_requests(relay):
-    """Send multiple requests and verify all responses come back."""
-    _r, port, _messages = relay
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-
-    for seq in range(1, 4):
-        request = {
-            "seq": seq,
-            "type": "request",
-            "command": f"cmd{seq}",
-        }
-        writer.write(_make_dap_bytes(request))
-    await writer.drain()
-
-    # Read all 3 responses
-    buf = b""
-    all_responses = []
-    for _ in range(50):
         try:
-            chunk = await asyncio.wait_for(reader.read(4096), timeout=3.0)
+            chunk = await asyncio.wait_for(reader.read(4096), timeout=remaining)
         except asyncio.TimeoutError:
             break
         if not chunk:
             break
         buf += chunk
         msgs, buf = decode_messages(buf)
-        all_responses.extend(msgs)
-        if len(all_responses) >= 3:
-            break
+        all_msgs.extend(msgs)
+    return all_msgs
 
-    assert len(all_responses) == 3
-    for i, resp in enumerate(all_responses, 1):
-        assert resp["request_seq"] == i
-        assert resp["command"] == f"cmd{i}"
 
-    writer.close()
+@pytest.mark.asyncio
+async def test_relay_forwards_request_and_response(relay):
+    """Send a DAP request through the relay and get the echo response back."""
+    _, port, _ = relay
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        request = {
+            "seq": 1,
+            "type": "request",
+            "command": "initialize",
+            "arguments": {"clientID": "test"},
+        }
+        writer.write(_make_dap_bytes(request))
+        await writer.drain()
+
+        msgs = await _read_responses(reader, count=1)
+        assert len(msgs) >= 1
+        resp = msgs[0]
+        assert resp["type"] == "response"
+        assert resp["success"] is True
+        assert resp["command"] == "initialize"
+        assert resp["body"]["echo"] is True
+    finally:
+        await _close_writer(writer)
+
+
+@pytest.mark.asyncio
+async def test_relay_logs_messages(relay):
+    """Verify the on_message callback captures messages flowing through."""
+    _, port, messages = relay
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        request = {"seq": 1, "type": "request", "command": "threads"}
+        writer.write(_make_dap_bytes(request))
+        await writer.drain()
+
+        await _read_responses(reader, count=1)
+        await asyncio.sleep(0.1)
+
+        directions = [d for d, _ in messages if d in ("client->adapter", "adapter->client")]
+        assert "client->adapter" in directions
+        assert "adapter->client" in directions
+    finally:
+        await _close_writer(writer)
+
+
+@pytest.mark.asyncio
+async def test_relay_rejects_second_client(relay):
+    """Only one client connection should be accepted."""
+    _, port, _ = relay
+
+    _reader1, writer1 = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        await asyncio.sleep(0.1)
+
+        reader2, writer2 = await asyncio.open_connection("127.0.0.1", port)
+        try:
+            rejection = await asyncio.wait_for(reader2.read(4096), timeout=2.0)
+            assert b"Only one client" in rejection
+        finally:
+            await _close_writer(writer2)
+    finally:
+        await _close_writer(writer1)
+
+
+@pytest.mark.asyncio
+async def test_relay_multiple_requests(relay):
+    """Send multiple requests and verify all responses come back."""
+    _, port, _ = relay
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        for seq in range(1, 4):
+            request = {"seq": seq, "type": "request", "command": f"cmd{seq}"}
+            writer.write(_make_dap_bytes(request))
+        await writer.drain()
+
+        all_responses = await _read_responses(reader, count=3)
+        assert len(all_responses) == 3
+        for i, resp in enumerate(all_responses, 1):
+            assert resp["request_seq"] == i
+            assert resp["command"] == f"cmd{i}"
+    finally:
+        await _close_writer(writer)
 
 
 @pytest.mark.asyncio
 async def test_relay_client_connected_status(relay):
     """Status callback fires when client connects and disconnects."""
-    _r, port, messages = relay
+    _, port, messages = relay
 
     _reader, writer = await asyncio.open_connection("127.0.0.1", port)
     await asyncio.sleep(0.2)
@@ -207,20 +193,23 @@ async def test_relay_client_connected_status(relay):
     connected = [e for e in status_events if e.get("event") == "client_connected"]
     assert len(connected) == 1
 
-    writer.close()
-    await asyncio.sleep(1.0)
+    await _close_writer(writer)
 
-    status_events = [m for d, m in messages if d == "status"]
-    disconnected = [e for e in status_events if e.get("event") == "client_disconnected"]
+    # Wait for disconnect event with bounded timeout
+    for _ in range(20):
+        await asyncio.sleep(0.1)
+        status_events = [m for d, m in messages if d == "status"]
+        disconnected = [e for e in status_events if e.get("event") == "client_disconnected"]
+        if disconnected:
+            break
     assert len(disconnected) >= 1
 
 
 @pytest.mark.asyncio
 async def test_relay_attach_inject():
     """Verify attach_inject merges processId into the attach request."""
-    captured = []
+    captured: list = []
 
-    # Use an echo adapter that returns the request body so we can inspect it
     r = DAPRelay(
         adapter_cmd=ECHO_ADAPTER,
         host="127.0.0.1",
@@ -230,28 +219,30 @@ async def test_relay_attach_inject():
     )
     port = await r.start()
 
-    _reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        _reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        try:
+            request = {
+                "seq": 1,
+                "type": "request",
+                "command": "attach",
+                "arguments": {"justMyCode": False},
+            }
+            writer.write(_make_dap_bytes(request))
+            await writer.drain()
+            await asyncio.sleep(0.2)
 
-    # Send an attach request WITHOUT processId
-    request = {
-        "seq": 1,
-        "type": "request",
-        "command": "attach",
-        "arguments": {"justMyCode": False},
-    }
-    writer.write(_make_dap_bytes(request))
-    await writer.drain()
-    await asyncio.sleep(0.2)
-
-    # Check that the relay injected processId before forwarding
-    forwarded = [m for d, m in captured if d == "client->adapter" and m.get("command") == "attach"]
-    assert len(forwarded) == 1
-    assert forwarded[0]["arguments"]["processId"] == 9999
-    assert forwarded[0]["arguments"]["customArg"] == "hello"
-    assert forwarded[0]["arguments"]["justMyCode"] is False
-
-    writer.close()
-    await r.stop()
+            forwarded = [
+                m for d, m in captured if d == "client->adapter" and m.get("command") == "attach"
+            ]
+            assert len(forwarded) == 1
+            assert forwarded[0]["arguments"]["processId"] == 9999
+            assert forwarded[0]["arguments"]["customArg"] == "hello"
+            assert forwarded[0]["arguments"]["justMyCode"] is False
+        finally:
+            await _close_writer(writer)
+    finally:
+        await asyncio.wait_for(r.stop(), timeout=10)
 
 
 @pytest.mark.asyncio
