@@ -11,9 +11,9 @@ Covers:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from voice_debugger.ai.provider import AIResponse, StreamEvent, ToolCall
-from voice_debugger.ai.orchestrator import Orchestrator
-from voice_debugger.widgets.conversation import ConversationView
+from heyducky.ai.provider import AIResponse, StreamEvent, ToolCall
+from heyducky.ai.orchestrator import Orchestrator
+from heyducky.widgets.conversation import ConversationView
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +399,7 @@ class TestClaudeProviderStreaming:
     @pytest.mark.asyncio
     async def test_stream_message_text_only(self):
         """stream_message yields text deltas and done event."""
-        with patch("voice_debugger.ai.claude.AsyncAnthropic") as mock_cls:
+        with patch("heyducky.ai.claude.AsyncAnthropic") as mock_cls:
             mock_client = AsyncMock()
             mock_cls.return_value = mock_client
 
@@ -438,7 +438,7 @@ class TestClaudeProviderStreaming:
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
-            from voice_debugger.ai.claude import ClaudeProvider
+            from heyducky.ai.claude import ClaudeProvider
             provider = ClaudeProvider(api_key="test-key")
 
             collected = []
@@ -460,7 +460,7 @@ class TestClaudeProviderStreaming:
     @pytest.mark.asyncio
     async def test_stream_message_with_tool_use(self):
         """stream_message yields tool_call events for tool_use blocks."""
-        with patch("voice_debugger.ai.claude.AsyncAnthropic") as mock_cls:
+        with patch("heyducky.ai.claude.AsyncAnthropic") as mock_cls:
             mock_client = AsyncMock()
             mock_cls.return_value = mock_client
 
@@ -501,7 +501,7 @@ class TestClaudeProviderStreaming:
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
-            from voice_debugger.ai.claude import ClaudeProvider
+            from heyducky.ai.claude import ClaudeProvider
             provider = ClaudeProvider(api_key="test-key")
 
             collected = []
@@ -518,7 +518,7 @@ class TestClaudeProviderStreaming:
     @pytest.mark.asyncio
     async def test_stream_message_passes_kwargs(self):
         """stream_message passes system and tools to the API."""
-        with patch("voice_debugger.ai.claude.AsyncAnthropic") as mock_cls:
+        with patch("heyducky.ai.claude.AsyncAnthropic") as mock_cls:
             mock_client = AsyncMock()
             mock_cls.return_value = mock_client
 
@@ -541,7 +541,7 @@ class TestClaudeProviderStreaming:
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
-            from voice_debugger.ai.claude import ClaudeProvider
+            from heyducky.ai.claude import ClaudeProvider
             provider = ClaudeProvider(api_key="test-key")
 
             tools = [{"name": "test_tool", "description": "test", "input_schema": {}}]
@@ -567,43 +567,47 @@ class TestConversationViewStreaming:
     @pytest.mark.asyncio
     async def test_start_ai_stream_initializes_state(self):
         """start_ai_stream initializes buffer and writes prefix."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             conv = app.query_one("#conversation-view", ConversationView)
             initial_lines = len(conv.lines)
             conv.start_ai_stream()
 
             assert conv._stream_buffer == ""
-            assert conv._stream_line_index == initial_lines
+            assert conv._stream_line_buffer == ""
             # Should have written the "AI: " prefix line
             assert len(conv.lines) > initial_lines
 
     @pytest.mark.asyncio
     async def test_append_ai_chunk_adds_text(self):
-        """append_ai_chunk appends text to the buffer and writes to log."""
-        from voice_debugger.app import VoiceDebuggerApp
+        """append_ai_chunk buffers text and flushes on newlines."""
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             conv = app.query_one("#conversation-view", ConversationView)
             conv.start_ai_stream()
             lines_after_start = len(conv.lines)
 
+            # Chunks without newlines are buffered, not written yet
             conv.append_ai_chunk("Hello ")
             assert conv._stream_buffer == "Hello "
-            assert len(conv.lines) > lines_after_start
+            assert conv._stream_line_buffer == "Hello "
+            assert len(conv.lines) == lines_after_start
 
-            conv.append_ai_chunk("world!")
-            assert conv._stream_buffer == "Hello world!"
+            conv.append_ai_chunk("world!\n")
+            assert conv._stream_buffer == "Hello world!\n"
+            # Newline should flush the line to the log
+            assert len(conv.lines) > lines_after_start
 
     @pytest.mark.asyncio
     async def test_finish_ai_stream_returns_buffer(self):
         """finish_ai_stream returns accumulated buffer and resets state."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             conv = app.query_one("#conversation-view", ConversationView)
             conv.start_ai_stream()
@@ -617,9 +621,9 @@ class TestConversationViewStreaming:
     @pytest.mark.asyncio
     async def test_append_empty_chunk_does_not_write(self):
         """append_ai_chunk with empty text does not add a line."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             conv = app.query_one("#conversation-view", ConversationView)
             conv.start_ai_stream()
@@ -633,9 +637,9 @@ class TestConversationViewStreaming:
     @pytest.mark.asyncio
     async def test_existing_methods_still_work(self):
         """Existing add_ai_message and add_user_message still work."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             conv = app.query_one("#conversation-view", ConversationView)
             lines_before = len(conv.lines)
@@ -658,9 +662,9 @@ class TestAppStreamingIntegration:
     @pytest.mark.asyncio
     async def test_app_has_stream_helper_methods(self):
         """App has _start_ai_stream, _append_ai_chunk, _finish_ai_stream."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             assert hasattr(app, "_start_ai_stream")
             assert hasattr(app, "_append_ai_chunk")
@@ -672,9 +676,9 @@ class TestAppStreamingIntegration:
     @pytest.mark.asyncio
     async def test_app_stream_methods_work(self):
         """App streaming helper methods correctly delegate to ConversationView."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             # Start stream
             app._start_ai_stream()
@@ -695,9 +699,9 @@ class TestAppStreamingIntegration:
     @pytest.mark.asyncio
     async def test_finish_stream_records_in_chat_history(self):
         """_finish_ai_stream records the full text in chat history."""
-        from voice_debugger.app import VoiceDebuggerApp
+        from heyducky.app import HeyDuckyApp
 
-        app = VoiceDebuggerApp()
+        app = HeyDuckyApp()
         async with app.run_test():
             app._start_ai_stream()
             app._append_ai_chunk("Test response")

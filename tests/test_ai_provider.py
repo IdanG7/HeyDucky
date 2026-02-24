@@ -3,11 +3,11 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from voice_debugger.ai.provider import AIResponse
-from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
-from voice_debugger.ai.functions import DEBUGGER_TOOLS
-from voice_debugger.ai.claude import ClaudeProvider
-from voice_debugger.widgets.conversation import ConversationView
+from heyducky.ai.provider import AIResponse
+from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
+from heyducky.ai.functions import DEBUGGER_TOOLS
+from heyducky.ai.claude import ClaudeProvider
+from heyducky.widgets.conversation import ConversationView
 
 
 def test_ai_response_dataclass():

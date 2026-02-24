@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from voice_debugger.debugger.session import DebugSession
+from heyducky.debugger.session import DebugSession
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_session_detects_language():
 @pytest.mark.asyncio
 async def test_session_start_sets_state():
     """Session sets state to initializing on start."""
-    with patch("voice_debugger.debugger.session.DAPClient") as mock_client_cls:
+    with patch("heyducky.debugger.session.DAPClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.initialize = AsyncMock(return_value=MagicMock(success=True))
         mock_client.launch = AsyncMock(return_value=MagicMock(success=True))

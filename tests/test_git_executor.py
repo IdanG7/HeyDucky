@@ -2,7 +2,7 @@
 
 import pytest
 
-from voice_debugger.git_executor import GitExecutor, GitCommandBlocked
+from heyducky.git_executor import GitExecutor, GitCommandBlocked
 
 
 def test_status_allowed():

@@ -1,6 +1,6 @@
 # tests/test_config.py
 from pathlib import Path
-from voice_debugger.config import Config
+from heyducky.config import Config
 
 
 def test_default_config():
@@ -43,8 +43,6 @@ def test_config_compaction_defaults():
     """Config has compaction defaults."""
     config = Config()
     assert config.compaction_enabled is True
-    assert config.compaction_threshold == 100_000
-    assert config.max_compactions == 5
 
 
 def test_config_compaction_from_dict():
@@ -52,23 +50,17 @@ def test_config_compaction_from_dict():
     config = Config.from_dict({
         "ai": {
             "compaction_enabled": False,
-            "compaction_threshold": 80000,
-            "max_compactions": 3,
         },
     })
     assert config.compaction_enabled is False
-    assert config.compaction_threshold == 80000
-    assert config.max_compactions == 3
 
 
 def test_config_compaction_round_trip(tmp_path):
-    """Compaction settings survive save/load cycle."""
+    """Compaction enabled setting survives save/load cycle."""
     config_path = tmp_path / "config.toml"
     config = Config()
-    config.compaction_threshold = 75000
     config.compaction_enabled = False
     config.save(config_path)
 
     loaded = Config.load(config_path)
-    assert loaded.compaction_threshold == 75000
     assert loaded.compaction_enabled is False

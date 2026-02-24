@@ -1,6 +1,6 @@
 """Tests for the VariablesView watch panel functionality."""
 
-from voice_debugger.widgets.variables import VariablesView
+from heyducky.widgets.variables import VariablesView
 
 
 def test_add_watch():

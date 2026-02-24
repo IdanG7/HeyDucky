@@ -2,14 +2,14 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from voice_debugger.ai.claude import ClaudeProvider
-from voice_debugger.ai.provider import AIResponse
+from heyducky.ai.claude import ClaudeProvider
+from heyducky.ai.provider import AIResponse
 
 
 @pytest.fixture
 def mock_anthropic():
     """Create a mocked AsyncAnthropic client."""
-    with patch("voice_debugger.ai.claude.AsyncAnthropic") as mock_cls:
+    with patch("heyducky.ai.claude.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
 
@@ -68,6 +68,6 @@ async def test_claude_handles_tool_use(mock_anthropic):
 
 def test_claude_model_name():
     """model_name returns configured model."""
-    with patch("voice_debugger.ai.claude.AsyncAnthropic"):
+    with patch("heyducky.ai.claude.AsyncAnthropic"):
         provider = ClaudeProvider(api_key="k", model="claude-opus-4-6")
         assert provider.model_name() == "claude-opus-4-6"

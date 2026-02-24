@@ -1,7 +1,7 @@
 # tests/test_project.py
 """Tests for project root detection."""
 
-from voice_debugger.project import detect_project_root
+from heyducky.project import detect_project_root
 
 
 def test_detect_git_root(tmp_path):

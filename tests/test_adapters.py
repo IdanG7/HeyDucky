@@ -1,6 +1,6 @@
 """Tests for debug adapter registry."""
 
-from voice_debugger.debugger.adapters import (
+from heyducky.debugger.adapters import (
     AdapterConfig,
     ADAPTER_REGISTRY,
     detect_language,

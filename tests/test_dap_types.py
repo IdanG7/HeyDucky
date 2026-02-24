@@ -1,6 +1,6 @@
 """Tests for DAP message types."""
 
-from voice_debugger.debugger.types import (
+from heyducky.debugger.types import (
     DAPRequest,
     DAPResponse,
     DAPEvent,

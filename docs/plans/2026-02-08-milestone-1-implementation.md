@@ -14,8 +14,8 @@
 
 **Files:**
 - Create: `pyproject.toml`
-- Create: `voice_debugger/__init__.py`
-- Create: `voice_debugger/__main__.py`
+- Create: `heyducky/__init__.py`
+- Create: `heyducky/__main__.py`
 - Create: `tests/__init__.py`
 
 **Step 1: Create pyproject.toml**
@@ -26,7 +26,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "voice-debugger"
+name = "ducky"
 version = "0.1.0"
 description = "Voice-controlled AI debugging assistant"
 requires-python = ">=3.10"
@@ -48,23 +48,23 @@ dev = [
 ]
 
 [project.scripts]
-voice-debugger = "voice_debugger.__main__:main"
+ducky = "heyducky.__main__:main"
 ```
 
-**Step 2: Create voice_debugger/__init__.py**
+**Step 2: Create heyducky/__init__.py**
 
 ```python
 """Voice-controlled AI debugging assistant."""
 ```
 
-**Step 3: Create voice_debugger/__main__.py**
+**Step 3: Create heyducky/__main__.py**
 
 ```python
-"""CLI entry point for voice-debugger."""
+"""CLI entry point for ducky."""
 
 def main():
-    from voice_debugger.app import VoiceDebuggerApp
-    app = VoiceDebuggerApp()
+    from heyducky.app import HeyDuckyApp
+    app = HeyDuckyApp()
     app.run()
 
 if __name__ == "__main__":
@@ -86,7 +86,7 @@ Run: `cd /Users/idang/Projects/TalkToMe && git init && echo -e ".venv/\n__pycach
 **Step 7: Commit**
 
 ```bash
-git add pyproject.toml voice_debugger/ tests/ .gitignore docs/
+git add pyproject.toml heyducky/ tests/ .gitignore docs/
 git commit -m "feat: initial project scaffolding"
 ```
 
@@ -95,7 +95,7 @@ git commit -m "feat: initial project scaffolding"
 ### Task 2: Configuration Module
 
 **Files:**
-- Create: `voice_debugger/config.py`
+- Create: `heyducky/config.py`
 - Create: `tests/test_config.py`
 
 **Step 1: Write the failing test**
@@ -105,7 +105,7 @@ git commit -m "feat: initial project scaffolding"
 import os
 import tempfile
 from pathlib import Path
-from voice_debugger.config import Config
+from heyducky.config import Config
 
 
 def test_default_config():
@@ -152,8 +152,8 @@ Expected: FAIL (ImportError - module doesn't exist)
 **Step 3: Write the implementation**
 
 ```python
-# voice_debugger/config.py
-"""Configuration management for voice-debugger."""
+# heyducky/config.py
+"""Configuration management for ducky."""
 
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ from pathlib import Path
 import toml
 
 
-DEFAULT_CONFIG_DIR = Path.home() / ".config" / "voice-debugger"
+DEFAULT_CONFIG_DIR = Path.home() / ".config" / "ducky"
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "config.toml"
 
 
@@ -239,7 +239,7 @@ Expected: All 4 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add voice_debugger/config.py tests/test_config.py
+git add heyducky/config.py tests/test_config.py
 git commit -m "feat: add configuration module with TOML persistence"
 ```
 
@@ -248,10 +248,10 @@ git commit -m "feat: add configuration module with TOML persistence"
 ### Task 3: AI Provider Abstraction & System Prompts
 
 **Files:**
-- Create: `voice_debugger/ai/__init__.py`
-- Create: `voice_debugger/ai/provider.py`
-- Create: `voice_debugger/ai/prompts.py`
-- Create: `voice_debugger/ai/functions.py`
+- Create: `heyducky/ai/__init__.py`
+- Create: `heyducky/ai/provider.py`
+- Create: `heyducky/ai/prompts.py`
+- Create: `heyducky/ai/functions.py`
 - Create: `tests/test_ai_provider.py`
 
 **Step 1: Write the failing tests**
@@ -260,9 +260,9 @@ git commit -m "feat: add configuration module with TOML persistence"
 # tests/test_ai_provider.py
 """Tests for AI provider abstraction."""
 
-from voice_debugger.ai.provider import AIProvider, AIResponse
-from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
-from voice_debugger.ai.functions import DEBUGGER_TOOLS
+from heyducky.ai.provider import AIProvider, AIResponse
+from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
+from heyducky.ai.functions import DEBUGGER_TOOLS
 
 
 def test_ai_response_dataclass():
@@ -328,14 +328,14 @@ Expected: FAIL (ImportError)
 **Step 3: Create ai/__init__.py**
 
 ```python
-# voice_debugger/ai/__init__.py
+# heyducky/ai/__init__.py
 """AI provider modules."""
 ```
 
 **Step 4: Write provider.py**
 
 ```python
-# voice_debugger/ai/provider.py
+# heyducky/ai/provider.py
 """Abstract AI provider and response types."""
 
 from __future__ import annotations
@@ -400,7 +400,7 @@ class AIProvider(ABC):
 **Step 5: Write prompts.py**
 
 ```python
-# voice_debugger/ai/prompts.py
+# heyducky/ai/prompts.py
 """System prompts and response post-processing."""
 
 DEBUGGER_SYSTEM_PROMPT = """\
@@ -464,7 +464,7 @@ def humanize_response(text: str) -> str:
 **Step 6: Write functions.py**
 
 ```python
-# voice_debugger/ai/functions.py
+# heyducky/ai/functions.py
 """Tool/function definitions for debugger operations."""
 
 DEBUGGER_TOOLS = [
@@ -539,7 +539,7 @@ Expected: All 6 tests PASS
 **Step 8: Commit**
 
 ```bash
-git add voice_debugger/ai/ tests/test_ai_provider.py
+git add heyducky/ai/ tests/test_ai_provider.py
 git commit -m "feat: add AI provider abstraction, system prompts, and tool definitions"
 ```
 
@@ -548,7 +548,7 @@ git commit -m "feat: add AI provider abstraction, system prompts, and tool defin
 ### Task 4: Claude Provider Implementation
 
 **Files:**
-- Create: `voice_debugger/ai/claude.py`
+- Create: `heyducky/ai/claude.py`
 - Create: `tests/test_claude.py`
 
 **Step 1: Write the failing test**
@@ -559,14 +559,14 @@ git commit -m "feat: add AI provider abstraction, system prompts, and tool defin
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from voice_debugger.ai.claude import ClaudeProvider
-from voice_debugger.ai.provider import AIResponse
+from heyducky.ai.claude import ClaudeProvider
+from heyducky.ai.provider import AIResponse
 
 
 @pytest.fixture
 def mock_anthropic():
     """Create a mocked AsyncAnthropic client."""
-    with patch("voice_debugger.ai.claude.AsyncAnthropic") as mock_cls:
+    with patch("heyducky.ai.claude.AsyncAnthropic") as mock_cls:
         mock_client = AsyncMock()
         mock_cls.return_value = mock_client
 
@@ -625,7 +625,7 @@ async def test_claude_handles_tool_use(mock_anthropic):
 
 def test_claude_model_name():
     """model_name returns configured model."""
-    with patch("voice_debugger.ai.claude.AsyncAnthropic"):
+    with patch("heyducky.ai.claude.AsyncAnthropic"):
         provider = ClaudeProvider(api_key="k", model="claude-opus-4-6")
         assert provider.model_name() == "claude-opus-4-6"
 ```
@@ -638,14 +638,14 @@ Expected: FAIL (ImportError)
 **Step 3: Write the implementation**
 
 ```python
-# voice_debugger/ai/claude.py
+# heyducky/ai/claude.py
 """Anthropic Claude AI provider."""
 
 from __future__ import annotations
 
 from anthropic import AsyncAnthropic
 
-from voice_debugger.ai.provider import AIProvider, AIResponse, ToolCall
+from heyducky.ai.provider import AIProvider, AIResponse, ToolCall
 
 
 class ClaudeProvider(AIProvider):
@@ -709,7 +709,7 @@ Expected: All 3 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add voice_debugger/ai/claude.py tests/test_claude.py
+git add heyducky/ai/claude.py tests/test_claude.py
 git commit -m "feat: add Claude provider implementation"
 ```
 
@@ -718,7 +718,7 @@ git commit -m "feat: add Claude provider implementation"
 ### Task 5: AI Orchestrator
 
 **Files:**
-- Create: `voice_debugger/ai/orchestrator.py`
+- Create: `heyducky/ai/orchestrator.py`
 - Create: `tests/test_orchestrator.py`
 
 **Step 1: Write the failing test**
@@ -729,9 +729,9 @@ git commit -m "feat: add Claude provider implementation"
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from voice_debugger.ai.orchestrator import Orchestrator
-from voice_debugger.ai.provider import AIResponse, ToolCall
-from voice_debugger.config import Config
+from heyducky.ai.orchestrator import Orchestrator
+from heyducky.ai.provider import AIResponse, ToolCall
+from heyducky.config import Config
 
 
 @pytest.fixture
@@ -821,14 +821,14 @@ Expected: FAIL (ImportError)
 **Step 3: Write the implementation**
 
 ```python
-# voice_debugger/ai/orchestrator.py
+# heyducky/ai/orchestrator.py
 """AI orchestration - manages conversation, context, and cost."""
 
 from __future__ import annotations
 
-from voice_debugger.ai.provider import AIProvider, AIResponse, COST_PER_TOKEN
-from voice_debugger.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
-from voice_debugger.ai.functions import DEBUGGER_TOOLS
+from heyducky.ai.provider import AIProvider, AIResponse, COST_PER_TOKEN
+from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
+from heyducky.ai.functions import DEBUGGER_TOOLS
 
 
 class Orchestrator:
@@ -893,7 +893,7 @@ Expected: All 5 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add voice_debugger/ai/orchestrator.py tests/test_orchestrator.py
+git add heyducky/ai/orchestrator.py tests/test_orchestrator.py
 git commit -m "feat: add AI orchestrator with conversation management and cost tracking"
 ```
 
@@ -902,7 +902,7 @@ git commit -m "feat: add AI orchestrator with conversation management and cost t
 ### Task 6: Voice Handler (STT Only)
 
 **Files:**
-- Create: `voice_debugger/voice.py`
+- Create: `heyducky/voice.py`
 - Create: `tests/test_voice.py`
 
 **Step 1: Write the failing test**
@@ -914,7 +914,7 @@ git commit -m "feat: add AI orchestrator with conversation management and cost t
 import numpy as np
 import pytest
 from unittest.mock import patch, MagicMock
-from voice_debugger.voice import VoiceHandler, trim_silence
+from heyducky.voice import VoiceHandler, trim_silence
 
 
 def test_trim_silence_removes_leading_trailing():
@@ -941,7 +941,7 @@ def test_trim_silence_all_silent():
 
 def test_voice_handler_init():
     """VoiceHandler initializes with config defaults."""
-    with patch("voice_debugger.voice.WhisperModel") as mock_whisper:
+    with patch("heyducky.voice.WhisperModel") as mock_whisper:
         handler = VoiceHandler(whisper_model="tiny.en")
         assert handler.sample_rate == 16000
         assert handler._is_recording is False
@@ -949,7 +949,7 @@ def test_voice_handler_init():
 
 def test_voice_handler_transcribe():
     """VoiceHandler transcribes audio buffer."""
-    with patch("voice_debugger.voice.WhisperModel") as mock_whisper_cls:
+    with patch("heyducky.voice.WhisperModel") as mock_whisper_cls:
         mock_model = MagicMock()
         mock_segment = MagicMock()
         mock_segment.text = " Hello world "
@@ -971,7 +971,7 @@ Expected: FAIL (ImportError)
 **Step 3: Write the implementation**
 
 ```python
-# voice_debugger/voice.py
+# heyducky/voice.py
 """Voice input handler - recording and transcription."""
 
 from __future__ import annotations
@@ -1113,7 +1113,7 @@ Expected: All 4 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add voice_debugger/voice.py tests/test_voice.py
+git add heyducky/voice.py tests/test_voice.py
 git commit -m "feat: add voice handler with recording and Whisper transcription"
 ```
 
@@ -1122,20 +1122,20 @@ git commit -m "feat: add voice handler with recording and Whisper transcription"
 ### Task 7: TUI Widgets
 
 **Files:**
-- Create: `voice_debugger/widgets/__init__.py`
-- Create: `voice_debugger/widgets/source_view.py`
-- Create: `voice_debugger/widgets/conversation.py`
-- Create: `voice_debugger/widgets/status_bar.py`
+- Create: `heyducky/widgets/__init__.py`
+- Create: `heyducky/widgets/source_view.py`
+- Create: `heyducky/widgets/conversation.py`
+- Create: `heyducky/widgets/status_bar.py`
 
 **Step 1: Create widgets/__init__.py**
 
 ```python
-# voice_debugger/widgets/__init__.py
+# heyducky/widgets/__init__.py
 """TUI widget components."""
 
-from voice_debugger.widgets.source_view import SourceView
-from voice_debugger.widgets.conversation import ConversationView
-from voice_debugger.widgets.status_bar import VoiceStatusBar
+from heyducky.widgets.source_view import SourceView
+from heyducky.widgets.conversation import ConversationView
+from heyducky.widgets.status_bar import VoiceStatusBar
 
 __all__ = ["SourceView", "ConversationView", "VoiceStatusBar"]
 ```
@@ -1143,7 +1143,7 @@ __all__ = ["SourceView", "ConversationView", "VoiceStatusBar"]
 **Step 2: Write source_view.py (placeholder)**
 
 ```python
-# voice_debugger/widgets/source_view.py
+# heyducky/widgets/source_view.py
 """Source code view widget (placeholder for Milestone 1)."""
 
 from textual.widgets import Static
@@ -1168,7 +1168,7 @@ class SourceView(Static):
 **Step 3: Write conversation.py**
 
 ```python
-# voice_debugger/widgets/conversation.py
+# heyducky/widgets/conversation.py
 """Conversation view widget for chat display."""
 
 from __future__ import annotations
@@ -1223,7 +1223,7 @@ class ConversationView(RichLog):
 **Step 4: Write status_bar.py**
 
 ```python
-# voice_debugger/widgets/status_bar.py
+# heyducky/widgets/status_bar.py
 """Status bar widget showing mic state, provider, and cost."""
 
 from __future__ import annotations
@@ -1256,13 +1256,13 @@ class VoiceStatusBar(Static):
 
 **Step 5: Verify widgets import cleanly**
 
-Run: `cd /Users/idang/Projects/TalkToMe && python -c "from voice_debugger.widgets import SourceView, ConversationView, VoiceStatusBar; print('OK')"`
+Run: `cd /Users/idang/Projects/TalkToMe && python -c "from heyducky.widgets import SourceView, ConversationView, VoiceStatusBar; print('OK')"`
 Expected: `OK`
 
 **Step 6: Commit**
 
 ```bash
-git add voice_debugger/widgets/
+git add heyducky/widgets/
 git commit -m "feat: add TUI widgets - source view, conversation, status bar"
 ```
 
@@ -1271,13 +1271,13 @@ git commit -m "feat: add TUI widgets - source view, conversation, status bar"
 ### Task 8: Main Textual Application
 
 **Files:**
-- Create: `voice_debugger/app.py`
-- Modify: `voice_debugger/__main__.py`
+- Create: `heyducky/app.py`
+- Modify: `heyducky/__main__.py`
 
 **Step 1: Write app.py**
 
 ```python
-# voice_debugger/app.py
+# heyducky/app.py
 """Main Textual TUI application."""
 
 from __future__ import annotations
@@ -1290,14 +1290,14 @@ from textual.containers import Container
 from textual.widgets import Header, Footer
 from textual.worker import Worker, get_current_worker
 
-from voice_debugger.config import Config
-from voice_debugger.widgets import SourceView, ConversationView, VoiceStatusBar
+from heyducky.config import Config
+from heyducky.widgets import SourceView, ConversationView, VoiceStatusBar
 
 
-class VoiceDebuggerApp(App):
+class HeyDuckyApp(App):
     """Voice-controlled AI debugging assistant."""
 
-    TITLE = "Voice Debugger"
+    TITLE = "HeyDucky"
     SUB_TITLE = "AI Pair Programming"
 
     CSS = """
@@ -1334,7 +1334,7 @@ class VoiceDebuggerApp(App):
     def on_mount(self) -> None:
         """Initialize components after mount."""
         conv = self.query_one("#conversation", ConversationView)
-        conv.add_system_message("Welcome to Voice Debugger. Press Space to talk.")
+        conv.add_system_message("Welcome to HeyDucky. Press Space to talk.")
 
         # Lazy-load heavy components
         self._init_components()
@@ -1347,8 +1347,8 @@ class VoiceDebuggerApp(App):
         # Initialize AI
         api_key = self.config.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         if api_key:
-            from voice_debugger.ai.claude import ClaudeProvider
-            from voice_debugger.ai.orchestrator import Orchestrator
+            from heyducky.ai.claude import ClaudeProvider
+            from heyducky.ai.orchestrator import Orchestrator
 
             provider = ClaudeProvider(api_key=api_key, model=self.config.ai_model)
             self._orchestrator = Orchestrator(provider=provider)
@@ -1362,7 +1362,7 @@ class VoiceDebuggerApp(App):
     def _init_voice_worker(self) -> None:
         """Load Whisper model in background thread."""
         try:
-            from voice_debugger.voice import VoiceHandler
+            from heyducky.voice import VoiceHandler
 
             self._voice = VoiceHandler(
                 whisper_model=self.config.whisper_model,
@@ -1464,8 +1464,8 @@ class VoiceDebuggerApp(App):
 **Step 2: Update __main__.py**
 
 ```python
-# voice_debugger/__main__.py
-"""CLI entry point for voice-debugger."""
+# heyducky/__main__.py
+"""CLI entry point for ducky."""
 
 import argparse
 
@@ -1495,17 +1495,17 @@ def main():
         _run_setup()
         return
 
-    from voice_debugger.app import VoiceDebuggerApp
+    from heyducky.app import HeyDuckyApp
 
-    app = VoiceDebuggerApp()
+    app = HeyDuckyApp()
     app.run()
 
 
 def _run_setup():
     """Interactive setup wizard."""
-    from voice_debugger.config import Config
+    from heyducky.config import Config
 
-    print("Voice Debugger Setup")
+    print("HeyDucky Setup")
     print("=" * 40)
 
     config = Config.load()
@@ -1523,7 +1523,7 @@ def _run_setup():
         config.whisper_model = whisper
 
     config.save()
-    print(f"\nConfig saved. Run 'voice-debugger' to start.")
+    print(f"\nConfig saved. Run 'ducky' to start.")
 
 
 if __name__ == "__main__":
@@ -1532,13 +1532,13 @@ if __name__ == "__main__":
 
 **Step 3: Test the app launches**
 
-Run: `cd /Users/idang/Projects/TalkToMe && python -c "from voice_debugger.app import VoiceDebuggerApp; print('Import OK')"`
+Run: `cd /Users/idang/Projects/TalkToMe && python -c "from heyducky.app import HeyDuckyApp; print('Import OK')"`
 Expected: `Import OK`
 
 **Step 4: Commit**
 
 ```bash
-git add voice_debugger/app.py voice_debugger/__main__.py
+git add heyducky/app.py heyducky/__main__.py
 git commit -m "feat: add main Textual TUI application with voice and AI integration"
 ```
 
@@ -1559,13 +1559,13 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from textual.pilot import Pilot
 
-from voice_debugger.app import VoiceDebuggerApp
+from heyducky.app import HeyDuckyApp
 
 
 @pytest.fixture
 def mock_voice():
     """Mock VoiceHandler to avoid actual audio."""
-    with patch("voice_debugger.app.VoiceHandler") as mock_cls:
+    with patch("heyducky.app.VoiceHandler") as mock_cls:
         mock_handler = MagicMock()
         mock_handler.is_recording = False
         mock_handler.transcribe.return_value = "test transcript"
@@ -1577,7 +1577,7 @@ def mock_voice():
 @pytest.mark.asyncio
 async def test_app_starts_and_quits():
     """App starts, shows welcome message, and quits with 'q'."""
-    app = VoiceDebuggerApp()
+    app = HeyDuckyApp()
     async with app.run_test() as pilot:
         # Should see the conversation widget
         conv = app.query_one("#conversation")
@@ -1594,7 +1594,7 @@ async def test_app_starts_and_quits():
 @pytest.mark.asyncio
 async def test_app_has_source_view():
     """App shows the source view placeholder."""
-    app = VoiceDebuggerApp()
+    app = HeyDuckyApp()
     async with app.run_test():
         source = app.query_one("#source-view")
         assert source is not None
@@ -1623,7 +1623,7 @@ git commit -m "test: add integration smoke tests for TUI application"
 
 **Step 1: Test the full app manually**
 
-Run: `cd /Users/idang/Projects/TalkToMe && ANTHROPIC_API_KEY=your-key-here python -m voice_debugger`
+Run: `cd /Users/idang/Projects/TalkToMe && ANTHROPIC_API_KEY=your-key-here python -m heyducky`
 
 Verify:
 - App launches with header, source view, conversation, status bar, footer
@@ -1636,15 +1636,15 @@ Verify:
 
 **Step 2: Test without API key**
 
-Run: `cd /Users/idang/Projects/TalkToMe && python -m voice_debugger`
+Run: `cd /Users/idang/Projects/TalkToMe && python -m heyducky`
 
 Verify: Shows "No API key configured" message.
 
 **Step 3: Test setup wizard**
 
-Run: `cd /Users/idang/Projects/TalkToMe && python -m voice_debugger --setup`
+Run: `cd /Users/idang/Projects/TalkToMe && python -m heyducky --setup`
 
-Verify: Interactive prompts work, config saves to `~/.config/voice-debugger/config.toml`.
+Verify: Interactive prompts work, config saves to `~/.config/ducky/config.toml`.
 
 **Step 4: Fix any issues found during manual testing**
 

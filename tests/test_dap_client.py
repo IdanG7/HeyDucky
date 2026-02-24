@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import AsyncMock
-from voice_debugger.debugger.dap_client import DAPClient
+from heyducky.debugger.dap_client import DAPClient
 
 
 @pytest.fixture

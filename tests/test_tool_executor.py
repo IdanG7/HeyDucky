@@ -2,9 +2,9 @@
 
 import pytest
 from unittest.mock import AsyncMock
-from voice_debugger.debugger.tool_executor import ToolExecutor
-from voice_debugger.ai.provider import ToolCall
-from voice_debugger.debugger.types import DAPResponse
+from heyducky.debugger.tool_executor import ToolExecutor
+from heyducky.ai.provider import ToolCall
+from heyducky.debugger.types import DAPResponse
 
 
 @pytest.fixture
@@ -332,3 +332,105 @@ async def test_watch_variable_no_callback(mock_dap):
         ToolCall(id="w5", name="watch_variable", arguments={"name": "z"})
     )
     assert result == "Now watching: z"
+
+
+# ------------------------------------------------------------------
+# read_source whole-file mode
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_read_source_whole_file(tmp_path):
+    """read_source without line arg reads the entire file."""
+    src = tmp_path / "whole.py"
+    src.write_text("a\nb\nc\nd\ne\n")
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="rs1", name="read_source", arguments={"file": str(src)})
+    )
+    assert "a" in result
+    assert "e" in result
+    # No >>> marker when no line specified
+    assert ">>>" not in result
+
+
+@pytest.mark.asyncio
+async def test_read_source_whole_file_capped(tmp_path):
+    """read_source caps whole-file reads at 500 lines."""
+    src = tmp_path / "big.py"
+    src.write_text("\n".join(f"line{i}" for i in range(600)))
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="rs2", name="read_source", arguments={"file": str(src)})
+    )
+    assert "more lines" in result
+
+
+# ------------------------------------------------------------------
+# list_files tool
+# ------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_files_basic(tmp_path):
+    """list_files shows files in a directory."""
+    (tmp_path / "foo.py").write_text("x")
+    (tmp_path / "bar.py").write_text("y")
+    (tmp_path / "sub").mkdir()
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="lf1", name="list_files", arguments={"path": str(tmp_path)})
+    )
+    assert "foo.py" in result
+    assert "bar.py" in result
+    assert "sub/" in result
+
+
+@pytest.mark.asyncio
+async def test_list_files_default_project_root(tmp_path):
+    """list_files defaults to project root."""
+    (tmp_path / "main.py").write_text("x")
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="lf2", name="list_files", arguments={})
+    )
+    assert "main.py" in result
+
+
+@pytest.mark.asyncio
+async def test_list_files_recursive(tmp_path):
+    """list_files recursive mode finds nested files."""
+    sub = tmp_path / "src"
+    sub.mkdir()
+    (sub / "app.py").write_text("x")
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="lf3", name="list_files", arguments={"path": str(tmp_path), "recursive": True})
+    )
+    assert "app.py" in result
+
+
+@pytest.mark.asyncio
+async def test_list_files_skips_git(tmp_path):
+    """list_files hides .git and other noise directories."""
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "__pycache__").mkdir()
+    (tmp_path / "real.py").write_text("x")
+    executor = ToolExecutor(None, project_root=str(tmp_path))
+    result = await executor.execute(
+        ToolCall(id="lf4", name="list_files", arguments={"path": str(tmp_path)})
+    )
+    assert "real.py" in result
+    assert ".git" not in result
+    assert "__pycache__" not in result
+
+
+@pytest.mark.asyncio
+async def test_list_files_no_dap_needed():
+    """list_files works without a DAP client."""
+    executor = ToolExecutor(None)
+    result = await executor.execute(
+        ToolCall(id="lf5", name="list_files", arguments={"path": "."})
+    )
+    # Should work, just list the current directory
+    assert isinstance(result, str)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from voice_debugger.chat_history import ChatHistory
+from heyducky.chat_history import ChatHistory
 
 
 @pytest.fixture
@@ -109,12 +109,12 @@ def test_export_current_markdown_includes_session_id(chat_history):
 
 
 def test_export_current_markdown_ends_with_footer(chat_history):
-    """export_current_markdown ends with 'Exported from Voice Debugger'."""
+    """export_current_markdown ends with 'Exported from HeyDucky'."""
     chat_history.add("user", "Hello")
 
     md = chat_history.export_current_markdown()
 
-    assert md.endswith("*Exported from Voice Debugger*")
+    assert md.endswith("*Exported from HeyDucky*")
 
 
 def _create_session(history_dir: Path, name: str, created: datetime):

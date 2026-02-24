@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock
 
-from voice_debugger.ai.orchestrator import Orchestrator
+from heyducky.ai.orchestrator import Orchestrator
 
 
 @pytest.fixture

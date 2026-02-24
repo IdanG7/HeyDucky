@@ -1,9 +1,9 @@
 """Tests for AI orchestrator."""
 
 import pytest
-from unittest.mock import AsyncMock
-from voice_debugger.ai.orchestrator import Orchestrator
-from voice_debugger.ai.provider import AIResponse, ToolCall
+from unittest.mock import AsyncMock, Mock, patch
+from heyducky.ai.orchestrator import Orchestrator, _smart_threshold, COMPACTION_RATIO
+from heyducky.ai.provider import AIResponse, ToolCall
 
 
 @pytest.fixture
@@ -18,7 +18,8 @@ def mock_provider():
             output_tokens=20,
         )
     )
-    provider.model_name.return_value = "claude-sonnet-4-5-20250929"
+    # model_name is a regular (non-async) method
+    provider.model_name = Mock(return_value="claude-sonnet-4-5-20250929")
     provider.count_tokens = AsyncMock(return_value=0)
     return provider
 
@@ -119,10 +120,23 @@ async def test_orchestrator_executes_tool_calls(mock_provider):
     assert mock_provider.send_message.call_count == 2
 
 
+def test_smart_threshold_known_model():
+    """Smart threshold returns 80% of known model context window."""
+    threshold = _smart_threshold("claude-sonnet-4-5-20250929")
+    assert threshold == int(200_000 * COMPACTION_RATIO)
+
+
+def test_smart_threshold_unknown_model():
+    """Smart threshold falls back to default for unknown models."""
+    threshold = _smart_threshold("some-future-model")
+    assert threshold == int(200_000 * COMPACTION_RATIO)
+
+
 @pytest.mark.asyncio
 async def test_orchestrator_compacts_when_over_threshold(mock_provider):
-    """Orchestrator compacts history when token count exceeds threshold."""
-    mock_provider.count_tokens = AsyncMock(return_value=110_000)
+    """Orchestrator compacts history when token count exceeds smart threshold."""
+    # Smart threshold for sonnet is 160_000, so return a value above it
+    mock_provider.count_tokens = AsyncMock(return_value=170_000)
 
     resp1 = AIResponse(text="First reply.", tool_calls=[], input_tokens=50, output_tokens=20)
     resp2 = AIResponse(text="Second reply.", tool_calls=[], input_tokens=50, output_tokens=20)
@@ -140,7 +154,7 @@ async def test_orchestrator_compacts_when_over_threshold(mock_provider):
         side_effect=[resp1, resp2, summary_resp, final_resp]
     )
 
-    orch = Orchestrator(provider=mock_provider, compaction_threshold=100_000)
+    orch = Orchestrator(provider=mock_provider)
 
     # Build up history: after 2 chats, history = [u1, a1, u2, a2] = 4 messages
     await orch.chat("First message")
@@ -168,7 +182,7 @@ async def test_orchestrator_no_compact_when_disabled(mock_provider):
 @pytest.mark.asyncio
 async def test_orchestrator_compact_preserves_recent_turns(mock_provider):
     """After compaction, the last user+assistant exchange is preserved."""
-    mock_provider.count_tokens = AsyncMock(return_value=110_000)
+    mock_provider.count_tokens = AsyncMock(return_value=170_000)
 
     summary_resp = AIResponse(
         text="Summary of conversation.",
@@ -216,7 +230,7 @@ async def test_orchestrator_compact_preserves_recent_turns(mock_provider):
 
     mock_provider.send_message = AsyncMock(side_effect=side_effect)
 
-    orch = Orchestrator(provider=mock_provider, compaction_threshold=100_000)
+    orch = Orchestrator(provider=mock_provider)
 
     # Build up history: 2 exchanges = 4 messages
     await orch.chat("Build up history")

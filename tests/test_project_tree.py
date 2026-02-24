@@ -2,7 +2,7 @@
 """Tests for filtered project tree widget."""
 
 
-from voice_debugger.widgets.project_tree import ProjectTree, IGNORE_NAMES, IGNORE_EXTENSIONS
+from heyducky.widgets.project_tree import ProjectTree, IGNORE_NAMES, IGNORE_EXTENSIONS
 
 
 def test_filter_hides_git(tmp_path):

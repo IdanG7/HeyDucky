@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from voice_debugger.config import Config
-from voice_debugger.tts import TTSHandler, split_sentences
+from heyducky.config import Config
+from heyducky.tts import TTSHandler, split_sentences
 
 
 # --- split_sentences tests ---
@@ -141,8 +141,8 @@ class TestTTSHandler:
         # Verify the text was actually processed by the playback loop
         mock_client.text_to_speech.stream.assert_called_with(
             text="Hello",
-            voice_id="JBFqnCBsd6RMkjVDRZzb",
-            model_id="eleven_flash_v2_5",
+            voice_id="UgBBYS2sOqTuMpoF3BR0",
+            model_id="eleven_multilingual_v2",
             output_format="mp3_22050_32",
         )
 
@@ -224,8 +224,8 @@ class TestTTSHandler:
 
         mock_client.text_to_speech.stream.assert_called_with(
             text="Test speech",
-            voice_id="JBFqnCBsd6RMkjVDRZzb",
-            model_id="eleven_flash_v2_5",
+            voice_id="UgBBYS2sOqTuMpoF3BR0",
+            model_id="eleven_multilingual_v2",
             output_format="mp3_22050_32",
         )
         mock_elevenlabs["stream"].assert_called_with(mock_audio)
@@ -262,7 +262,7 @@ class TestConfigTTS:
         config = Config()
         assert config.tts_enabled is False
         assert config.tts_api_key == ""
-        assert config.tts_voice_id == "JBFqnCBsd6RMkjVDRZzb"
+        assert config.tts_voice_id == "UgBBYS2sOqTuMpoF3BR0"
 
     def test_tts_from_dict(self):
         """Config reads TTS settings from dict."""
@@ -282,7 +282,7 @@ class TestConfigTTS:
         config = Config.from_dict({})
         assert config.tts_enabled is False
         assert config.tts_api_key == ""
-        assert config.tts_voice_id == "JBFqnCBsd6RMkjVDRZzb"
+        assert config.tts_voice_id == "UgBBYS2sOqTuMpoF3BR0"
 
     def test_tts_to_dict(self):
         """Config serializes TTS fields to dict."""
@@ -322,7 +322,7 @@ class TestLazyImport:
         """The tts module itself can be imported without elevenlabs installed."""
         # split_sentences and the module-level code should work fine
         # Only the TTSHandler constructor actually needs elevenlabs
-        from voice_debugger.tts import split_sentences as ss
+        from heyducky.tts import split_sentences as ss
         assert callable(ss)
 
     def test_handler_import_error_message(self):
@@ -344,3 +344,40 @@ class TestLazyImport:
                     assert "pip install" in str(exc_info.value)
         finally:
             sys.modules.update(saved_modules)
+
+
+# --- Markdown stripping tests ---
+
+
+class TestStripMarkdown:
+    """Tests for the _strip_markdown post-processing."""
+
+    def test_strips_bold(self):
+        from heyducky.ai.prompts import _strip_markdown
+        assert _strip_markdown("This is **bold** text") == "This is bold text"
+
+    def test_strips_italic(self):
+        from heyducky.ai.prompts import _strip_markdown
+        assert _strip_markdown("This is *italic* text") == "This is italic text"
+
+    def test_strips_inline_code(self):
+        from heyducky.ai.prompts import _strip_markdown
+        assert _strip_markdown("Run `pip install`") == "Run pip install"
+
+    def test_strips_code_fences(self):
+        from heyducky.ai.prompts import _strip_markdown
+        text = "Here:\n```python\nprint('hi')\n```\nDone"
+        result = _strip_markdown(text)
+        assert "```" not in result
+        assert "print('hi')" in result
+
+    def test_strips_headings(self):
+        from heyducky.ai.prompts import _strip_markdown
+        assert _strip_markdown("## My Heading") == "My Heading"
+
+    def test_humanize_includes_markdown_strip(self):
+        from heyducky.ai.prompts import humanize_response
+        result = humanize_response("I will **certainly** do that")
+        # "Certainly" removed, "I will" -> "I'll", **bold** stripped
+        assert "**" not in result
+        assert "Certainly" not in result

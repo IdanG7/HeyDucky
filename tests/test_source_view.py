@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from rich.text import Text
 
-from voice_debugger.widgets.source_view import SourceView
+from heyducky.widgets.source_view import SourceView
 
 
 def test_source_view_load_content():

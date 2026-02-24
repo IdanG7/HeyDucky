@@ -2,8 +2,8 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from voice_debugger.debugger.transport import StdioTransport
-from voice_debugger.debugger.types import DAPRequest
+from heyducky.debugger.transport import StdioTransport
+from heyducky.debugger.types import DAPRequest
 
 
 @pytest.mark.asyncio

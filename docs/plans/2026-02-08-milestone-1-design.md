@@ -59,7 +59,7 @@ Build a terminal TUI where you can:
 ## Project Structure (Milestone 1)
 
 ```
-voice_debugger/
+heyducky/
   __init__.py
   __main__.py          # CLI entry point
   app.py               # Textual app
@@ -95,7 +95,7 @@ pyproject.toml
 - aiofiles >= 23.2.1
 
 ## Success Criteria
-- Can launch TUI with `python -m voice_debugger`
+- Can launch TUI with `python -m heyducky`
 - Can hold Space, speak, and see transcript in conversation
 - Claude responds naturally within 3s
 - Cost shown in status bar
