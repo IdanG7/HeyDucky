@@ -75,11 +75,7 @@ class DAPRelay:
 
     async def stop(self) -> None:
         """Stop the relay, killing the adapter and closing connections."""
-        # Stop accepting new connections first
-        if self._server:
-            self._server.close()
-
-        # Kill the adapter so stdout/stdin reads unblock
+        # Kill the adapter first so stdout/stdin reads unblock
         if self._adapter_proc:
             with contextlib.suppress(ProcessLookupError):
                 self._adapter_proc.kill()
@@ -97,8 +93,12 @@ class DAPRelay:
             self._client_writer.close()
             self._client_writer = None
 
+        # Close the server socket. Skip wait_closed() — on Python 3.12+ it
+        # blocks until all _handle_client coroutines exit, but those are
+        # server-managed tasks we can't cancel directly. Everything is
+        # already dead at this point so there's nothing useful to wait for.
         if self._server:
-            await self._server.wait_closed()
+            self._server.close()
 
     async def wait_for_adapter(self) -> int:
         """Wait for the adapter subprocess to exit. Returns exit code."""
