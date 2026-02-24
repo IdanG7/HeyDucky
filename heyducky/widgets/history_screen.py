@@ -13,7 +13,7 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList
-from textual.widgets.option_list import Option, Separator
+from textual.widgets.option_list import Option
 
 from heyducky.chat_history import ChatHistory
 
@@ -112,9 +112,9 @@ class HistoryScreen(ModalScreen[Path | None]):
             if not first_group:
                 option_list.add_option(None)
             first_group = False
-            option_list.add_option(Separator())
+            option_list.add_option(None)
             option_list.add_option(Option(f"  {group_name}", disabled=True))
-            option_list.add_option(Separator())
+            option_list.add_option(None)
 
             for s in sessions:
                 created = s["created"][:16].replace("T", " ") if s["created"] else "?"
