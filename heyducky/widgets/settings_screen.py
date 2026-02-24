@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Collapsible, Input, Label, Select, Static, Switch
 
@@ -107,7 +109,7 @@ class SettingsScreen(ModalScreen[Config | None]):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "cancel", "Cancel", show=True),
     ]
 
@@ -247,9 +249,7 @@ class SettingsScreen(ModalScreen[Config | None]):
                 compaction_enabled=self.query_one("#setting-compaction", Switch).value,
                 theme=self.query_one("#setting-theme", Select).value,
                 whisper_model=self.query_one("#setting-whisper", Select).value,
-                sample_rate=int(
-                    self.query_one("#setting-sample-rate", Input).value or "16000"
-                ),
+                sample_rate=int(self.query_one("#setting-sample-rate", Input).value or "16000"),
                 silence_threshold=float(
                     self.query_one("#setting-silence-threshold", Input).value or "0.02"
                 ),

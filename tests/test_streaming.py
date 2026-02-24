@@ -8,17 +8,18 @@ Covers:
 - Integration of streaming in the app flow
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-from heyducky.ai.provider import AIResponse, StreamEvent, ToolCall
-from heyducky.ai.orchestrator import Orchestrator
-from heyducky.widgets.conversation import ConversationView
+import pytest
 
+from heyducky.ai.orchestrator import Orchestrator
+from heyducky.ai.provider import AIResponse, StreamEvent, ToolCall
+from heyducky.widgets.conversation import ConversationView
 
 # ---------------------------------------------------------------------------
 # StreamEvent dataclass tests
 # ---------------------------------------------------------------------------
+
 
 class TestStreamEvent:
     """Tests for the StreamEvent dataclass."""
@@ -59,6 +60,7 @@ class TestStreamEvent:
 # Helper: create a mock streaming provider
 # ---------------------------------------------------------------------------
 
+
 def _make_streaming_provider(stream_events_sequence):
     """Create a mock provider that yields events from stream_message().
 
@@ -86,6 +88,7 @@ def _make_streaming_provider(stream_events_sequence):
 
         provider.stream_message = _stream_message
     else:
+
         async def _stream_message(**kwargs):
             for event in stream_events_sequence:
                 yield event
@@ -99,6 +102,7 @@ def _make_streaming_provider(stream_events_sequence):
 # Orchestrator.chat_streaming() tests
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorChatStreaming:
     """Tests for Orchestrator.chat_streaming() async generator."""
 
@@ -108,9 +112,12 @@ class TestOrchestratorChatStreaming:
         events = [
             StreamEvent(type="text", text="Hello "),
             StreamEvent(type="text", text="world!"),
-            StreamEvent(type="done", response=AIResponse(
-                text="Hello world!", tool_calls=[], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Hello world!", tool_calls=[], input_tokens=10, output_tokens=5
+                ),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -133,9 +140,10 @@ class TestOrchestratorChatStreaming:
         """chat_streaming tracks token usage and cost."""
         events = [
             StreamEvent(type="text", text="Hi"),
-            StreamEvent(type="done", response=AIResponse(
-                text="Hi", tool_calls=[], input_tokens=50, output_tokens=20
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(text="Hi", tool_calls=[], input_tokens=50, output_tokens=20),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -152,9 +160,10 @@ class TestOrchestratorChatStreaming:
         """chat_streaming appends user and assistant messages to history."""
         events = [
             StreamEvent(type="text", text="Reply"),
-            StreamEvent(type="done", response=AIResponse(
-                text="Reply", tool_calls=[], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(text="Reply", tool_calls=[], input_tokens=10, output_tokens=5),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -171,9 +180,12 @@ class TestOrchestratorChatStreaming:
         """chat_streaming applies humanize_response to the final text."""
         events = [
             StreamEvent(type="text", text="Certainly I shall help"),
-            StreamEvent(type="done", response=AIResponse(
-                text="Certainly I shall help", tool_calls=[], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Certainly I shall help", tool_calls=[], input_tokens=10, output_tokens=5
+                ),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -195,9 +207,12 @@ class TestOrchestratorChatStreaming:
         events = [
             StreamEvent(type="text", text="Let me check"),
             StreamEvent(type="tool_call", tool_call=tc),
-            StreamEvent(type="done", response=AIResponse(
-                text="Let me check", tool_calls=[tc], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Let me check", tool_calls=[tc], input_tokens=10, output_tokens=5
+                ),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -225,16 +240,22 @@ class TestOrchestratorChatStreaming:
         first_call_events = [
             StreamEvent(type="text", text="Checking "),
             StreamEvent(type="tool_call", tool_call=tc),
-            StreamEvent(type="done", response=AIResponse(
-                text="Checking", tool_calls=[tc], input_tokens=30, output_tokens=15
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Checking", tool_calls=[tc], input_tokens=30, output_tokens=15
+                ),
+            ),
         ]
         # Second call: text-only follow-up after tool result
         second_call_events = [
             StreamEvent(type="text", text="x is 42."),
-            StreamEvent(type="done", response=AIResponse(
-                text="x is 42.", tool_calls=[], input_tokens=40, output_tokens=10
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="x is 42.", tool_calls=[], input_tokens=40, output_tokens=10
+                ),
+            ),
         ]
 
         provider = _make_streaming_provider([first_call_events, second_call_events])
@@ -272,15 +293,19 @@ class TestOrchestratorChatStreaming:
 
         first_events = [
             StreamEvent(type="tool_call", tool_call=tc),
-            StreamEvent(type="done", response=AIResponse(
-                text="", tool_calls=[tc], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(text="", tool_calls=[tc], input_tokens=10, output_tokens=5),
+            ),
         ]
         second_events = [
             StreamEvent(type="text", text="Done stepping."),
-            StreamEvent(type="done", response=AIResponse(
-                text="Done stepping.", tool_calls=[], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Done stepping.", tool_calls=[], input_tokens=10, output_tokens=5
+                ),
+            ),
         ]
 
         provider = _make_streaming_provider([first_events, second_events])
@@ -307,12 +332,14 @@ class TestOrchestratorChatStreaming:
         provider = AsyncMock()
         provider.model_name = Mock(return_value="claude-sonnet-4-5-20250929")
         provider.count_tokens = AsyncMock(return_value=0)
-        provider.send_message = AsyncMock(return_value=AIResponse(
-            text="Non-streaming response.",
-            tool_calls=[],
-            input_tokens=10,
-            output_tokens=5,
-        ))
+        provider.send_message = AsyncMock(
+            return_value=AIResponse(
+                text="Non-streaming response.",
+                tool_calls=[],
+                input_tokens=10,
+                output_tokens=5,
+            )
+        )
 
         orch = Orchestrator(provider=provider)
 
@@ -326,9 +353,14 @@ class TestOrchestratorChatStreaming:
         """chat_streaming yields many small text deltas."""
         words = ["The ", "bug ", "is ", "on ", "line ", "42."]
         events = [StreamEvent(type="text", text=w) for w in words]
-        events.append(StreamEvent(type="done", response=AIResponse(
-            text="The bug is on line 42.", tool_calls=[], input_tokens=10, output_tokens=5
-        )))
+        events.append(
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="The bug is on line 42.", tool_calls=[], input_tokens=10, output_tokens=5
+                ),
+            )
+        )
 
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -347,9 +379,10 @@ class TestOrchestratorChatStreaming:
         tc = ToolCall(id="t1", name="step_over", arguments={})
         events = [
             StreamEvent(type="tool_call", tool_call=tc),
-            StreamEvent(type="done", response=AIResponse(
-                text="", tool_calls=[tc], input_tokens=10, output_tokens=5
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(text="", tool_calls=[tc], input_tokens=10, output_tokens=5),
+            ),
         ]
         provider = _make_streaming_provider(events)
         orch = Orchestrator(provider=provider)
@@ -366,15 +399,19 @@ class TestOrchestratorChatStreaming:
         """chat_streaming accumulates cost across multiple streaming calls."""
         events1 = [
             StreamEvent(type="text", text="First"),
-            StreamEvent(type="done", response=AIResponse(
-                text="First", tool_calls=[], input_tokens=20, output_tokens=10
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(text="First", tool_calls=[], input_tokens=20, output_tokens=10),
+            ),
         ]
         events2 = [
             StreamEvent(type="text", text="Second"),
-            StreamEvent(type="done", response=AIResponse(
-                text="Second", tool_calls=[], input_tokens=30, output_tokens=15
-            )),
+            StreamEvent(
+                type="done",
+                response=AIResponse(
+                    text="Second", tool_calls=[], input_tokens=30, output_tokens=15
+                ),
+            ),
         ]
 
         provider = _make_streaming_provider([events1, events2])
@@ -392,6 +429,7 @@ class TestOrchestratorChatStreaming:
 # ---------------------------------------------------------------------------
 # ClaudeProvider.stream_message() tests (mocked)
 # ---------------------------------------------------------------------------
+
 
 class TestClaudeProviderStreaming:
     """Tests for ClaudeProvider.stream_message() with mocked Anthropic API."""
@@ -427,8 +465,8 @@ class TestClaudeProviderStreaming:
             async def _anext(self):
                 try:
                     return next(_events)
-                except StopIteration:
-                    raise StopAsyncIteration
+                except StopIteration as err:
+                    raise StopAsyncIteration from err
 
             mock_stream.__anext__ = _anext
 
@@ -439,6 +477,7 @@ class TestClaudeProviderStreaming:
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
             from heyducky.ai.claude import ClaudeProvider
+
             provider = ClaudeProvider(api_key="test-key")
 
             collected = []
@@ -491,8 +530,8 @@ class TestClaudeProviderStreaming:
             async def _anext(self):
                 try:
                     return next(_events)
-                except StopIteration:
-                    raise StopAsyncIteration
+                except StopIteration as err:
+                    raise StopAsyncIteration from err
 
             mock_stream.__anext__ = _anext
 
@@ -502,6 +541,7 @@ class TestClaudeProviderStreaming:
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
             from heyducky.ai.claude import ClaudeProvider
+
             provider = ClaudeProvider(api_key="test-key")
 
             collected = []
@@ -542,6 +582,7 @@ class TestClaudeProviderStreaming:
             mock_client.messages.stream = MagicMock(return_value=mock_ctx)
 
             from heyducky.ai.claude import ClaudeProvider
+
             provider = ClaudeProvider(api_key="test-key")
 
             tools = [{"name": "test_tool", "description": "test", "input_schema": {}}]
@@ -560,6 +601,7 @@ class TestClaudeProviderStreaming:
 # ---------------------------------------------------------------------------
 # ConversationView streaming tests
 # ---------------------------------------------------------------------------
+
 
 class TestConversationViewStreaming:
     """Tests for ConversationView streaming methods."""
@@ -655,6 +697,7 @@ class TestConversationViewStreaming:
 # ---------------------------------------------------------------------------
 # App integration tests
 # ---------------------------------------------------------------------------
+
 
 class TestAppStreamingIntegration:
     """Tests for app-level streaming integration."""

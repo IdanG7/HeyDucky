@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from textual.widgets import Static
 from textual.reactive import reactive
+from textual.widgets import Static
 
 _SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 
@@ -55,5 +55,7 @@ class VoiceStatusBar(Static):
         else:
             dbg = "[dim]No debug session[/]"
 
-        compact = f"  |  [dim]Compacted {self.compaction_count}x[/]" if self.compaction_count else ""
+        compact = (
+            f"  |  [dim]Compacted {self.compaction_count}x[/]" if self.compaction_count else ""
+        )
         return f"{mic}  |  {dbg}  |  {self.provider_name}  |  {cost}{compact}"

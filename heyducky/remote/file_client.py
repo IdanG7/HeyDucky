@@ -20,9 +20,7 @@ class RemoteFileClient:
         self._writer: asyncio.StreamWriter | None = None
 
     async def connect(self) -> None:
-        self._reader, self._writer = await asyncio.open_connection(
-            self._host, self._port
-        )
+        self._reader, self._writer = await asyncio.open_connection(self._host, self._port)
 
     async def close(self) -> None:
         if self._writer:
@@ -62,9 +60,13 @@ class RemoteFileClient:
     async def list_dir(self, path: str, recursive: bool = False) -> list[str] | None:
         """List a directory on the remote machine. Returns entries or None on error."""
         try:
-            resp = await self._request({
-                "cmd": "list_dir", "path": path, "recursive": recursive,
-            })
+            resp = await self._request(
+                {
+                    "cmd": "list_dir",
+                    "path": path,
+                    "recursive": recursive,
+                }
+            )
             if resp.get("ok"):
                 return resp.get("entries", [])
         except Exception:

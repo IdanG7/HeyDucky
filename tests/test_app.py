@@ -2,6 +2,7 @@
 """Smoke tests for the TUI application."""
 
 import pytest
+
 from heyducky.app import HeyDuckyApp
 
 

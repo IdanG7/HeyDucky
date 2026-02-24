@@ -18,8 +18,16 @@ import json
 from pathlib import Path
 
 SKIP_DIRS = {
-    ".git", "__pycache__", "node_modules", ".venv", "venv",
-    ".eggs", ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    ".eggs",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
 }
 
 
@@ -40,9 +48,7 @@ class FileServer:
 
     async def start(self) -> int:
         """Start the file server. Returns the actual port."""
-        self._server = await asyncio.start_server(
-            self._handle_client, self._host, self._port
-        )
+        self._server = await asyncio.start_server(self._handle_client, self._host, self._port)
         return self.port
 
     async def stop(self) -> None:

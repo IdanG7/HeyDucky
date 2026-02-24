@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from heyducky.debugger.types import decode_messages
 
@@ -68,9 +69,7 @@ class DAPRelay:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        self._server = await asyncio.start_server(
-            self._handle_client, self._host, self._port
-        )
+        self._server = await asyncio.start_server(self._handle_client, self._host, self._port)
         return self.port
 
     async def stop(self) -> None:
@@ -120,7 +119,7 @@ class DAPRelay:
 
         try:
             # When either direction ends (e.g. client disconnects), cancel the other
-            done, pending = await asyncio.wait(
+            _done, pending = await asyncio.wait(
                 [task_tcp, task_stdio], return_when=asyncio.FIRST_COMPLETED
             )
             for t in pending:

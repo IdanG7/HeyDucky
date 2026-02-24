@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
-from heyducky.debugger.types import DAPRequest, encode_message, decode_messages
+from heyducky.debugger.types import DAPRequest, decode_messages, encode_message
 
 
 class BaseTransport(ABC):

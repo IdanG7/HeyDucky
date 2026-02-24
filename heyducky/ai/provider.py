@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
-
+from typing import Any
 
 # Approximate per-token costs (USD)
 COST_PER_TOKEN = {
@@ -34,10 +34,7 @@ class AIResponse:
     def cost(self, provider: str) -> float:
         """Calculate cost in USD for this response."""
         rates = COST_PER_TOKEN.get(provider, COST_PER_TOKEN["claude"])
-        return (
-            self.input_tokens * rates["input"]
-            + self.output_tokens * rates["output"]
-        )
+        return self.input_tokens * rates["input"] + self.output_tokens * rates["output"]
 
 
 @dataclass

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Callable, Awaitable
 
-from heyducky.debugger.dap_client import DAPClient
 from heyducky.debugger.adapters import detect_language, get_adapter_config
+from heyducky.debugger.dap_client import DAPClient
 from heyducky.debugger.types import DAPEvent
 
 

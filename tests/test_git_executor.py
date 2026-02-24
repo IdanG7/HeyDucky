@@ -2,7 +2,7 @@
 
 import pytest
 
-from heyducky.git_executor import GitExecutor, GitCommandBlocked
+from heyducky.git_executor import GitCommandBlocked, GitExecutor
 
 
 def test_status_allowed():

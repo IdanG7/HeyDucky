@@ -1,8 +1,10 @@
 """Tests for AI orchestrator."""
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
-from heyducky.ai.orchestrator import Orchestrator, _smart_threshold, COMPACTION_RATIO
+
+from heyducky.ai.orchestrator import COMPACTION_RATIO, Orchestrator, _smart_threshold
 from heyducky.ai.provider import AIResponse, ToolCall
 
 
@@ -63,9 +65,7 @@ async def test_orchestrator_handles_tool_calls(mock_provider):
     mock_provider.send_message = AsyncMock(
         return_value=AIResponse(
             text="Let me check that.",
-            tool_calls=[
-                ToolCall(id="t1", name="inspect_variable", arguments={"name": "x"})
-            ],
+            tool_calls=[ToolCall(id="t1", name="inspect_variable", arguments={"name": "x"})],
             input_tokens=30,
             output_tokens=15,
         )
@@ -146,13 +146,9 @@ async def test_orchestrator_compacts_when_over_threshold(mock_provider):
         input_tokens=100,
         output_tokens=50,
     )
-    final_resp = AIResponse(
-        text="Got it.", tool_calls=[], input_tokens=30, output_tokens=10
-    )
+    final_resp = AIResponse(text="Got it.", tool_calls=[], input_tokens=30, output_tokens=10)
 
-    mock_provider.send_message = AsyncMock(
-        side_effect=[resp1, resp2, summary_resp, final_resp]
-    )
+    mock_provider.send_message = AsyncMock(side_effect=[resp1, resp2, summary_resp, final_resp])
 
     orch = Orchestrator(provider=mock_provider)
 
@@ -190,9 +186,7 @@ async def test_orchestrator_compact_preserves_recent_turns(mock_provider):
         input_tokens=50,
         output_tokens=30,
     )
-    final_resp = AIResponse(
-        text="Continuing.", tool_calls=[], input_tokens=30, output_tokens=10
-    )
+    final_resp = AIResponse(text="Continuing.", tool_calls=[], input_tokens=30, output_tokens=10)
 
     call_count = 0
 

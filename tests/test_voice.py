@@ -1,8 +1,10 @@
 """Tests for voice handler."""
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import sounddevice as sd
-from unittest.mock import patch, MagicMock
+
 from heyducky.voice import VoiceHandler, trim_silence
 
 

@@ -1,9 +1,11 @@
 """Tests for tool executor bridging AI tool calls to debugger."""
 
-import pytest
 from unittest.mock import AsyncMock
-from heyducky.debugger.tool_executor import ToolExecutor
+
+import pytest
+
 from heyducky.ai.provider import ToolCall
+from heyducky.debugger.tool_executor import ToolExecutor
 from heyducky.debugger.types import DAPResponse
 
 
@@ -21,14 +23,10 @@ def mock_dap():
         )
     )
     client.step_over = AsyncMock(
-        return_value=DAPResponse(
-            seq=2, request_seq=2, success=True, command="next", body={}
-        )
+        return_value=DAPResponse(seq=2, request_seq=2, success=True, command="next", body={})
     )
     client.continue_execution = AsyncMock(
-        return_value=DAPResponse(
-            seq=3, request_seq=3, success=True, command="continue", body={}
-        )
+        return_value=DAPResponse(seq=3, request_seq=3, success=True, command="continue", body={})
     )
     client.evaluate = AsyncMock(
         return_value=DAPResponse(
@@ -45,11 +43,7 @@ def mock_dap():
             request_seq=5,
             success=True,
             command="stackTrace",
-            body={
-                "stackFrames": [
-                    {"name": "main", "line": 10, "source": {"path": "test.py"}}
-                ]
-            },
+            body={"stackFrames": [{"name": "main", "line": 10, "source": {"path": "test.py"}}]},
         )
     )
     return client
@@ -70,9 +64,7 @@ async def test_execute_set_breakpoint(mock_dap):
 async def test_execute_step_over(mock_dap):
     """ToolExecutor handles step_over."""
     executor = ToolExecutor(mock_dap)
-    await executor.execute(
-        ToolCall(id="t2", name="step_over", arguments={})
-    )
+    await executor.execute(ToolCall(id="t2", name="step_over", arguments={}))
     mock_dap.step_over.assert_called_once()
 
 
@@ -91,9 +83,7 @@ async def test_execute_inspect_variable(mock_dap):
 async def test_execute_unknown_tool(mock_dap):
     """ToolExecutor handles unknown tool names gracefully."""
     executor = ToolExecutor(mock_dap)
-    result = await executor.execute(
-        ToolCall(id="t4", name="nonexistent_tool", arguments={})
-    )
+    result = await executor.execute(ToolCall(id="t4", name="nonexistent_tool", arguments={}))
     assert "unknown" in result.lower()
 
 
@@ -101,9 +91,7 @@ async def test_execute_unknown_tool(mock_dap):
 async def test_execute_continue(mock_dap):
     """ToolExecutor handles continue_execution."""
     executor = ToolExecutor(mock_dap)
-    result = await executor.execute(
-        ToolCall(id="t5", name="continue_execution", arguments={})
-    )
+    result = await executor.execute(ToolCall(id="t5", name="continue_execution", arguments={}))
     mock_dap.continue_execution.assert_called_once()
     assert "continu" in result.lower()
 
@@ -127,9 +115,7 @@ async def test_execute_evaluate_expression(mock_dap):
 async def test_execute_get_call_stack(mock_dap):
     """ToolExecutor handles get_call_stack."""
     executor = ToolExecutor(mock_dap)
-    result = await executor.execute(
-        ToolCall(id="t7", name="get_call_stack", arguments={})
-    )
+    result = await executor.execute(ToolCall(id="t7", name="get_call_stack", arguments={}))
     mock_dap.get_stack_trace.assert_called_once()
     assert "main" in result
     assert "test.py" in result
@@ -241,6 +227,7 @@ async def test_execute_set_breakpoint_no_condition_in_result(mock_dap):
 async def test_execute_git_status(mock_dap, tmp_path):
     """ToolExecutor handles run_git_command for git status."""
     import subprocess
+
     subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
 
     executor = ToolExecutor(mock_dap, project_root=str(tmp_path))
@@ -248,7 +235,9 @@ async def test_execute_git_status(mock_dap, tmp_path):
         ToolCall(id="g1", name="run_git_command", arguments={"command": "status"})
     )
     assert isinstance(result, str)
-    assert "branch" in result.lower() or "nothing" in result.lower() or "no commits" in result.lower()
+    assert (
+        "branch" in result.lower() or "nothing" in result.lower() or "no commits" in result.lower()
+    )
 
 
 @pytest.mark.asyncio
@@ -391,9 +380,7 @@ async def test_list_files_default_project_root(tmp_path):
     """list_files defaults to project root."""
     (tmp_path / "main.py").write_text("x")
     executor = ToolExecutor(None, project_root=str(tmp_path))
-    result = await executor.execute(
-        ToolCall(id="lf2", name="list_files", arguments={})
-    )
+    result = await executor.execute(ToolCall(id="lf2", name="list_files", arguments={}))
     assert "main.py" in result
 
 
@@ -429,8 +416,6 @@ async def test_list_files_skips_git(tmp_path):
 async def test_list_files_no_dap_needed():
     """list_files works without a DAP client."""
     executor = ToolExecutor(None)
-    result = await executor.execute(
-        ToolCall(id="lf5", name="list_files", arguments={"path": "."})
-    )
+    result = await executor.execute(ToolCall(id="lf5", name="list_files", arguments={"path": "."}))
     # Should work, just list the current directory
     assert isinstance(result, str)

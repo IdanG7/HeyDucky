@@ -7,7 +7,6 @@ from pathlib import Path
 
 import toml
 
-
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "ducky"
 DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "config.toml"
 

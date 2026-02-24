@@ -51,11 +51,10 @@ class TTSHandler:
     ):
         try:
             from elevenlabs.client import ElevenLabs
-        except ImportError:
+        except ImportError as err:
             raise RuntimeError(
-                "ElevenLabs SDK is not installed. "
-                "Install it with: pip install 'ducky[tts]'"
-            )
+                "ElevenLabs SDK is not installed. Install it with: pip install 'ducky[tts]'"
+            ) from err
 
         self._client = ElevenLabs(api_key=api_key)
         self._voice_id = voice_id

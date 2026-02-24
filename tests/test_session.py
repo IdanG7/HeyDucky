@@ -1,7 +1,9 @@
 """Tests for debug session manager."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from heyducky.debugger.session import DebugSession
 
 

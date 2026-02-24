@@ -1,8 +1,7 @@
 # tests/test_project_tree.py
 """Tests for filtered project tree widget."""
 
-
-from heyducky.widgets.project_tree import ProjectTree, IGNORE_NAMES, IGNORE_EXTENSIONS
+from heyducky.widgets.project_tree import IGNORE_EXTENSIONS, IGNORE_NAMES, ProjectTree
 
 
 def test_filter_hides_git(tmp_path):

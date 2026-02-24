@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+from typing import ClassVar
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -17,10 +18,7 @@ class _FolderTree(DirectoryTree):
     """Directory tree that only shows directories (no files)."""
 
     def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
-        return [
-            p for p in paths
-            if p.is_dir() and not p.name.startswith(".")
-        ]
+        return [p for p in paths if p.is_dir() and not p.name.startswith(".")]
 
 
 class FolderPickerScreen(ModalScreen[Path | None]):
@@ -80,7 +78,7 @@ class FolderPickerScreen(ModalScreen[Path | None]):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "cancel", "Cancel", show=True),
         Binding("l", "load_folder", "Load", show=True, priority=True),
     ]
@@ -109,9 +107,7 @@ class FolderPickerScreen(ModalScreen[Path | None]):
     def on_mount(self) -> None:
         self.query_one("#folder-tree").focus()
 
-    def on_directory_tree_cursor_changed(
-        self, event: DirectoryTree.NodeHighlighted
-    ) -> None:
+    def on_directory_tree_cursor_changed(self, event: DirectoryTree.NodeHighlighted) -> None:
         """Update the selected label as the cursor moves."""
         if event.node and event.node.data and event.node.data.path.is_dir():
             self._selected_path = event.node.data.path

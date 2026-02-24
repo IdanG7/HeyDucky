@@ -2,10 +2,10 @@
 """CLI entry point for ducky."""
 
 import argparse
+import contextlib
 import multiprocessing
 import os
 import sys
-
 
 BOLD = "\033[1m"
 DIM = "\033[2m"
@@ -19,10 +19,8 @@ def main():
     # Must be set before any other multiprocessing usage.
     # Prevents "bad value in fds_to_keep" when ctranslate2/faster-whisper
     # initializes inside a worker thread (e.g. Textual @work).
-    try:
+    with contextlib.suppress(RuntimeError):
         multiprocessing.set_start_method("spawn")
-    except RuntimeError:
-        pass  # Already set
 
     parser = argparse.ArgumentParser(
         prog="ducky",
@@ -90,12 +88,15 @@ def main():
 
     # First-launch: if no API key is configured anywhere, guide the user
     from heyducky.config import Config
+
     _config = Config.load()
     _has_key = _config.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
     if not _has_key:
         print(f"\n{YELLOW}No Anthropic API key found.{RESET}")
-        print(f"Run {BOLD}ducky --setup{RESET} to configure, "
-              f"or set the {BOLD}ANTHROPIC_API_KEY{RESET} environment variable.\n")
+        print(
+            f"Run {BOLD}ducky --setup{RESET} to configure, "
+            f"or set the {BOLD}ANTHROPIC_API_KEY{RESET} environment variable.\n"
+        )
         answer = input("Run setup now? [Y/n] ").strip()
         if answer == "" or answer.lower().startswith("y"):
             _run_setup()
@@ -139,7 +140,7 @@ def _run_setup():
         masked = config.api_key[:8] + "..." if config.api_key else "not set"
         print(f"  Anthropic API key [{DIM}{masked}{RESET}]")
         print(f"  {DIM}Get one at https://console.anthropic.com/settings/keys{RESET}")
-        api_key = input(f"  Key: ").strip()
+        api_key = input("  Key: ").strip()
         if api_key:
             config.api_key = api_key
 
@@ -150,30 +151,32 @@ def _run_setup():
             if _validate_api_key(effective_key):
                 print(f"\r  {GREEN}✓{RESET} API key is valid     ")
             else:
-                print(f"\r  {YELLOW}?{RESET} Could not validate key (network issue?) — saved anyway")
+                print(
+                    f"\r  {YELLOW}?{RESET} Could not validate key (network issue?) — saved anyway"
+                )
 
     # ── 2. AI Model ─────────────────────────────────────────────
     print(f"\n  AI model [{DIM}{config.ai_model}{RESET}]")
     print(f"  {DIM}Options: claude-sonnet-4-5-20250929, claude-haiku-3-5-20241022{RESET}")
-    model = input(f"  Model: ").strip()
+    model = input("  Model: ").strip()
     if model:
         config.ai_model = model
 
     # ── 3. Whisper Model ────────────────────────────────────────
     print(f"\n  Whisper model [{DIM}{config.whisper_model}{RESET}]")
     print(f"  {DIM}Options: tiny.en (fast), base.en (balanced), small.en (accurate){RESET}")
-    whisper = input(f"  Whisper: ").strip()
+    whisper = input("  Whisper: ").strip()
     if whisper:
         config.whisper_model = whisper
 
     # ── 4. TTS (optional) ──────────────────────────────────────
     print(f"\n  Text-to-speech [{DIM}{'enabled' if config.tts_enabled else 'disabled'}{RESET}]")
     print(f"  {DIM}Requires an ElevenLabs API key{RESET}")
-    tts_answer = input(f"  Enable TTS? [y/N] ").strip().lower()
+    tts_answer = input("  Enable TTS? [y/N] ").strip().lower()
     if tts_answer.startswith("y"):
         config.tts_enabled = True
         if not config.tts_api_key:
-            tts_key = input(f"  ElevenLabs API key: ").strip()
+            tts_key = input("  ElevenLabs API key: ").strip()
             if tts_key:
                 config.tts_api_key = tts_key
     elif tts_answer.startswith("n"):
@@ -196,6 +199,7 @@ def _validate_api_key(key: str) -> bool:
     """Quick validation — sends a tiny request to the Anthropic API."""
     try:
         import anthropic
+
         client = anthropic.Anthropic(api_key=key)
         client.messages.create(
             model="claude-haiku-3-5-20241022",

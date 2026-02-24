@@ -1,7 +1,8 @@
 """Tests for session auto-save (orchestrator get_state / restore_state)."""
 
-import pytest
 from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 from heyducky.ai.orchestrator import Orchestrator
 

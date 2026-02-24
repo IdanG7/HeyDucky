@@ -47,8 +47,9 @@ def test_refresh_display_includes_filename():
     view.load_source("/home/user/project/main.py", "x = 1\n")
 
     written: list[Text] = []
-    with patch.object(view, "clear"), patch.object(
-        view, "write", side_effect=lambda t: written.append(t)
+    with (
+        patch.object(view, "clear"),
+        patch.object(view, "write", side_effect=lambda t: written.append(t)),
     ):
         view._refresh_display()
 
@@ -65,8 +66,9 @@ def test_refresh_display_header_shows_short_and_full_path():
     view.load_source(full_path, "def helper():\n    pass\n")
 
     written: list[Text] = []
-    with patch.object(view, "clear"), patch.object(
-        view, "write", side_effect=lambda t: written.append(t)
+    with (
+        patch.object(view, "clear"),
+        patch.object(view, "write", side_effect=lambda t: written.append(t)),
     ):
         view._refresh_display()
 

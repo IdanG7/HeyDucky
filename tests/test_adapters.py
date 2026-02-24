@@ -1,8 +1,8 @@
 """Tests for debug adapter registry."""
 
 from heyducky.debugger.adapters import (
-    AdapterConfig,
     ADAPTER_REGISTRY,
+    AdapterConfig,
     detect_language,
     get_adapter_config,
 )

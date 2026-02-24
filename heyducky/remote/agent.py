@@ -15,15 +15,17 @@ from pathlib import Path
 
 from heyducky.remote.file_server import FileServer
 
-
 ADAPTER_COMMANDS: dict[str, list[str]] = {
     "python": [sys.executable, "-m", "debugpy.adapter"],
 }
 
 LISTEN_COMMANDS: dict[str, list[str]] = {
     "python": [
-        sys.executable, "-m", "debugpy",
-        "--listen", "{host}:{port}",
+        sys.executable,
+        "-m",
+        "debugpy",
+        "--listen",
+        "{host}:{port}",
         "--wait-for-client",
         "{program}",
     ],
@@ -41,7 +43,10 @@ def get_adapter_command(language: str) -> list[str] | None:
 def detect_language(program: str) -> str | None:
     ext_map = {
         ".py": "python",
-        ".c": "cpp", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
+        ".c": "cpp",
+        ".cpp": "cpp",
+        ".cc": "cpp",
+        ".cxx": "cpp",
         ".go": "go",
         ".rs": "rust",
     }
@@ -70,9 +75,7 @@ class RemoteAgent:
 
     async def start(self) -> tuple[int, int]:
         """Start file server + debug adapter. Returns (dap_port, file_port)."""
-        self._file_server = FileServer(
-            self._project_root, host=self.host, port=self.file_port
-        )
+        self._file_server = FileServer(self._project_root, host=self.host, port=self.file_port)
         actual_file_port = await self._file_server.start()
         self._start_adapter()
         return self.dap_port, actual_file_port
@@ -88,9 +91,7 @@ class RemoteAgent:
             part.format(host=self.host, port=self.dap_port, program=self.program)
             for part in template
         ]
-        self._adapter_proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr
-        )
+        self._adapter_proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
 
     async def wait(self) -> int:
         """Block until the debug adapter process exits. Returns its exit code."""

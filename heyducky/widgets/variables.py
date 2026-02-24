@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from textual.widgets import RichLog
 from rich.text import Text
+from textual.widgets import RichLog
 
 
 class VariablesView(RichLog):
@@ -33,15 +33,17 @@ class VariablesView(RichLog):
 
     def on_mount(self) -> None:
         """Show initial hints."""
-        self.write(Text.from_markup(
-            "[bold]Variables at a Glance[/bold]\n\n"
-            "[dim]When you hit a breakpoint, I'll show every variable\n"
-            "in scope — names, values, and types, updated live.\n\n"
-            "  [cyan]name[/cyan] = value  [dim green](type)[/dim green]\n\n"
-            "Ask me things like:\n"
-            "  \"What's the value of response?\"\n"
-            "  \"Why is count still zero?\"[/dim]"
-        ))
+        self.write(
+            Text.from_markup(
+                "[bold]Variables at a Glance[/bold]\n\n"
+                "[dim]When you hit a breakpoint, I'll show every variable\n"
+                "in scope — names, values, and types, updated live.\n\n"
+                "  [cyan]name[/cyan] = value  [dim green](type)[/dim green]\n\n"
+                "Ask me things like:\n"
+                '  "What\'s the value of response?"\n'
+                '  "Why is count still zero?"[/dim]'
+            )
+        )
 
     def update_variables(self, variables: list[dict]) -> None:
         """Update the displayed variables.

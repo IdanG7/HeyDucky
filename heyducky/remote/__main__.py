@@ -12,7 +12,6 @@ import asyncio
 import socket
 import sys
 
-
 BOLD = "\033[1m"
 DIM = "\033[2m"
 GREEN = "\033[0;32m"

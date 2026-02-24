@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from textual.widgets import RichLog
 from rich.text import Text
+from textual.widgets import RichLog
 
 
 class DebugOutputView(RichLog):
@@ -23,14 +23,16 @@ class DebugOutputView(RichLog):
 
     def on_mount(self) -> None:
         """Show initial hints."""
-        self.write(Text.from_markup(
-            "[bold]Live Program Output[/bold]\n\n"
-            "[dim]Everything your program prints shows up here in real time.\n\n"
-            "  [white]Normal output[/white]\n"
-            "  [red]Errors and warnings[/red]\n\n"
-            "Run: [bold]ducky my_script.py[/bold]\n"
-            "Then ask me about anything you see.[/dim]"
-        ))
+        self.write(
+            Text.from_markup(
+                "[bold]Live Program Output[/bold]\n\n"
+                "[dim]Everything your program prints shows up here in real time.\n\n"
+                "  [white]Normal output[/white]\n"
+                "  [red]Errors and warnings[/red]\n\n"
+                "Run: [bold]ducky my_script.py[/bold]\n"
+                "Then ask me about anything you see.[/dim]"
+            )
+        )
 
     def add_stdout(self, text: str) -> None:
         """Add program stdout."""

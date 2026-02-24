@@ -1,12 +1,13 @@
 """Tests for AI provider abstraction."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from heyducky.ai.provider import AIResponse
-from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
-from heyducky.ai.functions import DEBUGGER_TOOLS
+import pytest
+
 from heyducky.ai.claude import ClaudeProvider
+from heyducky.ai.functions import DEBUGGER_TOOLS
+from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
+from heyducky.ai.provider import AIResponse
 from heyducky.widgets.conversation import ConversationView
 
 

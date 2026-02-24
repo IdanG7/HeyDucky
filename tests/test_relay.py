@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from heyducky.remote.relay import DAPRelay
 from heyducky.debugger.types import decode_messages
+from heyducky.remote.relay import DAPRelay
 
 
 def _make_dap_bytes(msg: dict) -> bytes:
@@ -20,7 +20,8 @@ def _make_dap_bytes(msg: dict) -> bytes:
 # We use a small Python script as a fake "adapter" that reads a DAP request
 # from stdin and echoes back a DAP response on stdout.
 ECHO_ADAPTER = [
-    sys.executable, "-c",
+    sys.executable,
+    "-c",
     (
         "import sys, json\n"
         "while True:\n"
@@ -68,7 +69,7 @@ async def relay():
 @pytest.mark.asyncio
 async def test_relay_forwards_request_and_response(relay):
     """Send a DAP request through the relay and get the echo response back."""
-    r, port, messages = relay
+    _r, port, _messages = relay
 
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
@@ -105,7 +106,7 @@ async def test_relay_forwards_request_and_response(relay):
 @pytest.mark.asyncio
 async def test_relay_logs_messages(relay):
     """Verify the on_message callback captures messages flowing through."""
-    r, port, messages = relay
+    _r, port, messages = relay
 
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
@@ -141,9 +142,9 @@ async def test_relay_logs_messages(relay):
 @pytest.mark.asyncio
 async def test_relay_rejects_second_client(relay):
     """Only one client connection should be accepted."""
-    r, port, messages = relay
+    _r, port, _messages = relay
 
-    reader1, writer1 = await asyncio.open_connection("127.0.0.1", port)
+    _reader1, writer1 = await asyncio.open_connection("127.0.0.1", port)
     await asyncio.sleep(0.1)
 
     reader2, writer2 = await asyncio.open_connection("127.0.0.1", port)
@@ -157,7 +158,7 @@ async def test_relay_rejects_second_client(relay):
 @pytest.mark.asyncio
 async def test_relay_multiple_requests(relay):
     """Send multiple requests and verify all responses come back."""
-    r, port, messages = relay
+    _r, port, _messages = relay
 
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
@@ -197,9 +198,9 @@ async def test_relay_multiple_requests(relay):
 @pytest.mark.asyncio
 async def test_relay_client_connected_status(relay):
     """Status callback fires when client connects and disconnects."""
-    r, port, messages = relay
+    _r, port, messages = relay
 
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    _reader, writer = await asyncio.open_connection("127.0.0.1", port)
     await asyncio.sleep(0.2)
 
     status_events = [m for d, m in messages if d == "status"]
@@ -229,7 +230,7 @@ async def test_relay_attach_inject():
     )
     port = await r.start()
 
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    _reader, writer = await asyncio.open_connection("127.0.0.1", port)
 
     # Send an attach request WITHOUT processId
     request = {

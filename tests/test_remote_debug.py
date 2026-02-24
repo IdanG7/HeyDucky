@@ -1,14 +1,15 @@
 """Tests for remote debugging: attach mode, path mapping, and source fallback."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from heyducky.ai.provider import ToolCall
+from heyducky.debugger.adapters import AdapterConfig, get_adapter_config
 from heyducky.debugger.dap_client import DAPClient
 from heyducky.debugger.session import DebugSession
 from heyducky.debugger.tool_executor import ToolExecutor
-from heyducky.debugger.adapters import AdapterConfig, get_adapter_config
 from heyducky.debugger.types import DAPResponse
-from heyducky.ai.provider import ToolCall
-
 
 # ------------------------------------------------------------------
 # DAPClient.attach()
@@ -42,6 +43,7 @@ def client(mock_transport):
 @pytest.mark.asyncio
 async def test_attach_sends_request(client, mock_transport):
     """DAPClient.attach() sends an attach request and sets state to running."""
+
     async def fake_send(req):
         response_data = {
             "seq": 1,
@@ -63,6 +65,7 @@ async def test_attach_sends_request(client, mock_transport):
 @pytest.mark.asyncio
 async def test_get_source_sends_request(client, mock_transport):
     """DAPClient.get_source() sends a source request."""
+
     async def fake_send(req):
         response_data = {
             "seq": 1,
@@ -193,7 +196,10 @@ async def test_read_source_fallback_to_dap_source():
     mock_dap = AsyncMock()
     mock_dap.get_source = AsyncMock(
         return_value=DAPResponse(
-            seq=1, request_seq=1, success=True, command="source",
+            seq=1,
+            request_seq=1,
+            success=True,
+            command="source",
             body={"content": "remote_line1\nremote_line2\n"},
         )
     )
@@ -246,7 +252,10 @@ async def test_set_breakpoint_sends_remote_path():
     mock_dap = AsyncMock()
     mock_dap.set_breakpoint = AsyncMock(
         return_value=DAPResponse(
-            seq=1, request_seq=1, success=True, command="setBreakpoints",
+            seq=1,
+            request_seq=1,
+            success=True,
+            command="setBreakpoints",
             body={"breakpoints": [{"verified": True, "line": 10}]},
         )
     )
@@ -258,7 +267,8 @@ async def test_set_breakpoint_sends_remote_path():
     )
     await executor.execute(
         ToolCall(
-            id="b1", name="set_breakpoint",
+            id="b1",
+            name="set_breakpoint",
             arguments={"file": "/local/proj/main.py", "line": 10},
         )
     )

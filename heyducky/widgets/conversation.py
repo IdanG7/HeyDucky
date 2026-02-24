@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from textual.widgets import RichLog
 from rich.text import Text
+from textual.widgets import RichLog
 
 
 class ConversationView(RichLog):
@@ -23,17 +23,19 @@ class ConversationView(RichLog):
 
     def on_mount(self) -> None:
         """Show initial hints."""
-        self.write(Text.from_markup(
-            "[bold]Hey! I'm your debugging partner.[/bold]\n\n"
-            "[dim]Press [bold]Space[/bold] and talk to me like a colleague.\n\n"
-            "Try saying:\n"
-            "  \"What's this function doing?\"\n"
-            "  \"Set a breakpoint on line 42\"\n"
-            "  \"Show me the git diff\"\n"
-            "  \"Step into that call\"\n\n"
-            "I can read your code, run git commands, and\n"
-            "control the debugger — all by voice.[/dim]\n"
-        ))
+        self.write(
+            Text.from_markup(
+                "[bold]Hey! I'm your debugging partner.[/bold]\n\n"
+                "[dim]Press [bold]Space[/bold] and talk to me like a colleague.\n\n"
+                "Try saying:\n"
+                '  "What\'s this function doing?"\n'
+                '  "Set a breakpoint on line 42"\n'
+                '  "Show me the git diff"\n'
+                '  "Step into that call"\n\n'
+                "I can read your code, run git commands, and\n"
+                "control the debugger — all by voice.[/dim]\n"
+            )
+        )
 
     def add_user_message(self, text: str) -> None:
         """Add a user message to the conversation."""

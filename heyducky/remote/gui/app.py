@@ -5,14 +5,21 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from PySide6.QtCore import Qt
+import qasync
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
-import qasync
 
 from heyducky.remote.gui.styles import (
-    BASE, BLUE, CRUST, MANTLE, OVERLAY0, SURFACE0, SURFACE1,
-    SUBTEXT0, TEXT, STYLESHEET,
+    BASE,
+    BLUE,
+    CRUST,
+    MANTLE,
+    OVERLAY0,
+    STYLESHEET,
+    SUBTEXT0,
+    SURFACE0,
+    SURFACE1,
+    TEXT,
 )
 
 
@@ -60,6 +67,7 @@ def run_gui() -> None:
     asyncio.set_event_loop(loop)
 
     from heyducky.remote.gui.main_window import MainWindow
+
     window = MainWindow(loop)
     window.show()
 

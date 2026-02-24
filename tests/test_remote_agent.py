@@ -1,14 +1,11 @@
 """Tests for the remote debug agent: file server, file client, and ToolExecutor integration."""
 
-import asyncio
 import pytest
-from unittest.mock import AsyncMock
 
-from heyducky.remote.file_server import FileServer
-from heyducky.remote.file_client import RemoteFileClient
-from heyducky.debugger.tool_executor import ToolExecutor
 from heyducky.ai.provider import ToolCall
-
+from heyducky.debugger.tool_executor import ToolExecutor
+from heyducky.remote.file_client import RemoteFileClient
+from heyducky.remote.file_server import FileServer
 
 # ------------------------------------------------------------------
 # FileServer + FileClient integration
@@ -31,7 +28,7 @@ async def file_server(tmp_path):
 @pytest.fixture
 async def file_client(file_server):
     """Connect a client to the test file server."""
-    server, port, root = file_server
+    _server, port, root = file_server
     client = RemoteFileClient("127.0.0.1", port)
     await client.connect()
     yield client, root
@@ -55,7 +52,7 @@ async def test_read_file(file_client):
 
 @pytest.mark.asyncio
 async def test_read_file_relative(file_client):
-    client, root = file_client
+    client, _root = file_client
     content = await client.read_file("hello.py")
     assert content is not None
     assert "hello" in content

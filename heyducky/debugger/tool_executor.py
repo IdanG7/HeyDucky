@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from heyducky.debugger.dap_client import DAPClient
     from heyducky.ai.provider import ToolCall
+    from heyducky.debugger.dap_client import DAPClient
     from heyducky.remote.file_client import RemoteFileClient
 
 
@@ -59,7 +60,13 @@ class ToolExecutor:
             return f"Unknown tool: {name}"
 
         # Some tools don't need a DAP client
-        no_dap_tools = {"run_git_command", "watch_variable", "unwatch_variable", "read_source", "list_files"}
+        no_dap_tools = {
+            "run_git_command",
+            "watch_variable",
+            "unwatch_variable",
+            "read_source",
+            "list_files",
+        }
         if name not in no_dap_tools and self._dap is None:
             return f"No debug session active. Cannot execute {name}."
 
@@ -71,9 +78,7 @@ class ToolExecutor:
 
     async def _exec_set_breakpoint(self, args: dict) -> str:
         file_path = self._to_remote_path(args["file"])
-        resp = await self._dap.set_breakpoint(
-            file_path, args["line"], args.get("condition", "")
-        )
+        resp = await self._dap.set_breakpoint(file_path, args["line"], args.get("condition", ""))
         if resp.success:
             bps = resp.body.get("breakpoints", [])
             verified = all(bp.get("verified", False) for bp in bps)
@@ -129,9 +134,7 @@ class ToolExecutor:
             for f in frames:
                 source = f.get("source", {})
                 path = source.get("path", "?") if isinstance(source, dict) else "?"
-                lines.append(
-                    f"  {f.get('name', '?')} at {path}:{f.get('line', '?')}"
-                )
+                lines.append(f"  {f.get('name', '?')} at {path}:{f.get('line', '?')}")
             return "Call stack:\n" + "\n".join(lines) if lines else "Empty call stack"
         return f"Could not get call stack: {resp.message}"
 
@@ -153,10 +156,8 @@ class ToolExecutor:
 
         # Try local filesystem (with path mapping applied)
         if content is None:
-            try:
+            with contextlib.suppress(OSError):
                 content = Path(local_path).read_text()
-            except OSError:
-                pass
 
         # Last resort: ask the debug adapter for the source
         if content is None and self._dap_source_fallback and self._dap:
@@ -210,8 +211,17 @@ class ToolExecutor:
             if not target.is_dir():
                 return f"Not a directory: {path}"
 
-            skip = {".git", "__pycache__", "node_modules", ".venv", "venv",
-                    ".eggs", ".tox", ".mypy_cache", ".pytest_cache"}
+            skip = {
+                ".git",
+                "__pycache__",
+                "node_modules",
+                ".venv",
+                "venv",
+                ".eggs",
+                ".tox",
+                ".mypy_cache",
+                ".pytest_cache",
+            }
 
             entries_local = []
             if recursive:
@@ -246,7 +256,8 @@ class ToolExecutor:
     async def _exec_run_git_command(self, args: dict) -> str:
         if not self._project_root:
             return "No project root configured. Cannot run git commands."
-        from heyducky.git_executor import GitExecutor, GitCommandBlocked
+        from heyducky.git_executor import GitCommandBlocked, GitExecutor
+
         executor = GitExecutor(self._project_root)
         try:
             return executor.run(args["command"])

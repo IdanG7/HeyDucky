@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
-from heyducky.ai.provider import AIProvider, AIResponse, StreamEvent
-from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
 from heyducky.ai.functions import DEBUGGER_TOOLS
+from heyducky.ai.prompts import DEBUGGER_SYSTEM_PROMPT, humanize_response
+from heyducky.ai.provider import AIProvider, AIResponse, StreamEvent
 
 if TYPE_CHECKING:
     from heyducky.debugger.tool_executor import ToolExecutor
@@ -87,12 +88,14 @@ class Orchestrator:
                 if response.text:
                     content.append({"type": "text", "text": response.text})
                 for tc in response.tool_calls:
-                    content.append({
-                        "type": "tool_use",
-                        "id": tc.id,
-                        "name": tc.name,
-                        "input": tc.arguments,
-                    })
+                    content.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc.id,
+                            "name": tc.name,
+                            "input": tc.arguments,
+                        }
+                    )
                 self._history.append({"role": "assistant", "content": content})
 
                 # Execute tool calls if we have an executor
@@ -100,11 +103,13 @@ class Orchestrator:
                     tool_results = []
                     for tc in response.tool_calls:
                         result = await self._tool_executor.execute(tc)
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": tc.id,
-                            "content": result,
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tc.id,
+                                "content": result,
+                            }
+                        )
                     self._history.append({"role": "user", "content": tool_results})
                     continue  # Get Claude's follow-up response
                 else:
@@ -115,9 +120,7 @@ class Orchestrator:
 
         return response  # Safety: return last response if max rounds hit
 
-    async def chat_streaming(
-        self, user_message: str
-    ) -> AsyncIterator[StreamEvent]:
+    async def chat_streaming(self, user_message: str) -> AsyncIterator[StreamEvent]:
         """Stream an AI response, yielding events as they arrive.
 
         Like chat(), manages history, compaction, and tool call loops.
@@ -142,9 +145,7 @@ class Orchestrator:
                 system=DEBUGGER_SYSTEM_PROMPT,
                 tools=DEBUGGER_TOOLS,
             ):
-                if event.type == "text":
-                    yield event
-                elif event.type == "tool_call":
+                if event.type == "text" or event.type == "tool_call":
                     yield event
                 elif event.type == "done":
                     response = event.response
@@ -162,34 +163,34 @@ class Orchestrator:
                 if response.text:
                     content.append({"type": "text", "text": response.text})
                 for tc in response.tool_calls:
-                    content.append({
-                        "type": "tool_use",
-                        "id": tc.id,
-                        "name": tc.name,
-                        "input": tc.arguments,
-                    })
+                    content.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc.id,
+                            "name": tc.name,
+                            "input": tc.arguments,
+                        }
+                    )
                 self._history.append({"role": "assistant", "content": content})
 
                 if self._tool_executor:
                     tool_results = []
                     for tc in response.tool_calls:
                         result = await self._tool_executor.execute(tc)
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": tc.id,
-                            "content": result,
-                        })
-                    self._history.append(
-                        {"role": "user", "content": tool_results}
-                    )
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tc.id,
+                                "content": result,
+                            }
+                        )
+                    self._history.append({"role": "user", "content": tool_results})
                     continue  # Stream the follow-up response
                 else:
                     yield StreamEvent(type="done", response=response)
                     return
             else:
-                self._history.append(
-                    {"role": "assistant", "content": response.text}
-                )
+                self._history.append({"role": "assistant", "content": response.text})
                 yield StreamEvent(type="done", response=response)
                 return
 
@@ -219,23 +220,14 @@ class Orchestrator:
             return
 
         # Preserve last 3 messages (prev user, prev assistant, new user)
-        preserved = (
-            self._history[-3:]
-            if len(self._history) >= 3
-            else self._history[:]
-        )
-        to_compact = (
-            self._history[:-3]
-            if len(self._history) > 3
-            else self._history[:]
-        )
+        preserved = self._history[-3:] if len(self._history) >= 3 else self._history[:]
+        to_compact = self._history[:-3] if len(self._history) > 3 else self._history[:]
 
         if not to_compact:
             return
 
         summary_response = await self._provider.send_message(
-            messages=to_compact
-            + [{"role": "user", "content": COMPACTION_PROMPT}],
+            messages=[*to_compact, {"role": "user", "content": COMPACTION_PROMPT}],
             system="You are a conversation summarizer. Be concise and thorough.",
         )
         self._track_usage(summary_response)
@@ -243,15 +235,10 @@ class Orchestrator:
         summary_text = summary_response.text
 
         self._history = [
-            {
-                "role": "user",
-                "content": f"[Previous conversation summary]: {summary_text}",
-            },
-            {
-                "role": "assistant",
-                "content": "Got it, I have the context. Let's continue.",
-            },
-        ] + preserved
+            {"role": "user", "content": f"[Previous conversation summary]: {summary_text}"},
+            {"role": "assistant", "content": "Got it, I have the context. Let's continue."},
+            *preserved,
+        ]
 
         self.compaction_count += 1
 
@@ -266,16 +253,18 @@ class Orchestrator:
 
     def add_tool_result(self, tool_call_id: str, result: str) -> None:
         """Add a tool result to conversation history."""
-        self._history.append({
-            "role": "user",
-            "content": [
-                {
-                    "type": "tool_result",
-                    "tool_use_id": tool_call_id,
-                    "content": result,
-                }
-            ],
-        })
+        self._history.append(
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_call_id,
+                        "content": result,
+                    }
+                ],
+            }
+        )
 
     def get_state(self) -> dict:
         """Serialize orchestrator state for auto-save."""

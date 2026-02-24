@@ -54,13 +54,15 @@ class ChatHistory:
         for f in sorted(self._dir.glob("*.json"), reverse=True):
             try:
                 data = json.loads(f.read_text())
-                sessions.append({
-                    "session_id": data.get("session_id", f.stem),
-                    "created": data.get("created", ""),
-                    "message_count": data.get("message_count", 0),
-                    "preview": data.get("preview", ""),
-                    "path": f,
-                })
+                sessions.append(
+                    {
+                        "session_id": data.get("session_id", f.stem),
+                        "created": data.get("created", ""),
+                        "message_count": data.get("message_count", 0),
+                        "preview": data.get("preview", ""),
+                        "path": f,
+                    }
+                )
             except (json.JSONDecodeError, OSError):
                 continue
         return sessions

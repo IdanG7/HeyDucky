@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -122,7 +123,7 @@ class RemoteConnectScreen(ModalScreen[RemoteTarget | None]):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "cancel", "Cancel", show=True),
     ]
 
@@ -267,10 +268,12 @@ class RemoteConnectScreen(ModalScreen[RemoteTarget | None]):
         if remote_prefix and local_prefix:
             path_map[remote_prefix] = local_prefix
 
-        self.dismiss(RemoteTarget(
-            host=host,
-            port=port,
-            language=language,
-            path_map=path_map,
-            file_port=file_port,
-        ))
+        self.dismiss(
+            RemoteTarget(
+                host=host,
+                port=port,
+                language=language,
+                path_map=path_map,
+                file_port=file_port,
+            )
+        )

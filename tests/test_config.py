@@ -1,5 +1,6 @@
 # tests/test_config.py
 from pathlib import Path
+
 from heyducky.config import Config
 
 
@@ -13,10 +14,12 @@ def test_default_config():
 
 def test_config_from_dict():
     """Config can be created from a dictionary."""
-    config = Config.from_dict({
-        "ai": {"provider": "claude", "model": "claude-sonnet-4-5-20250929"},
-        "voice": {"whisper_model": "tiny.en", "sample_rate": 16000},
-    })
+    config = Config.from_dict(
+        {
+            "ai": {"provider": "claude", "model": "claude-sonnet-4-5-20250929"},
+            "voice": {"whisper_model": "tiny.en", "sample_rate": 16000},
+        }
+    )
     assert config.ai_model == "claude-sonnet-4-5-20250929"
     assert config.whisper_model == "tiny.en"
 
@@ -47,11 +50,13 @@ def test_config_compaction_defaults():
 
 def test_config_compaction_from_dict():
     """Config reads compaction settings from dict."""
-    config = Config.from_dict({
-        "ai": {
-            "compaction_enabled": False,
-        },
-    })
+    config = Config.from_dict(
+        {
+            "ai": {
+                "compaction_enabled": False,
+            },
+        }
+    )
     assert config.compaction_enabled is False
 
 

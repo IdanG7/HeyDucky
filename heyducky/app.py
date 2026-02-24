@@ -3,31 +3,33 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from pathlib import Path
+from typing import ClassVar
 
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
-from textual.widgets import Header, Footer, TabbedContent, TabPane
+from textual.widgets import Footer, Header, TabbedContent, TabPane
 
 from heyducky.chat_history import ChatHistory
 from heyducky.config import Config
 from heyducky.project import detect_project_root
 from heyducky.widgets import (
-    SourceView,
-    ConversationView,
-    VoiceStatusBar,
-    VariablesView,
     CallStackView,
+    ConversationView,
     DebugOutputView,
-    ProjectTree,
     FolderPickerScreen,
     HistoryScreen,
-    SettingsScreen,
+    ProjectTree,
     RemoteConnectScreen,
+    SettingsScreen,
+    SourceView,
+    VariablesView,
+    VoiceStatusBar,
 )
 
 AUTOSAVE_PATH = Path.home() / ".config" / "ducky" / "autosave.json"
@@ -62,7 +64,7 @@ class HeyDuckyApp(App):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("q", "quit", "Quit", priority=True),
         Binding("space", "toggle_recording", "Talk", show=True, priority=True),
         Binding("1", "show_tab('source')", "Source", show=False, priority=True),
@@ -113,14 +115,12 @@ class HeyDuckyApp(App):
         # Pre-load Whisper model on the main thread (before Textual event loop)
         # to avoid "bad value in fds_to_keep" errors when ctranslate2 initializes
         # inside a worker thread on Python 3.13+.
-        try:
+        with contextlib.suppress(Exception):
             from faster_whisper import WhisperModel
 
             self._preloaded_whisper = WhisperModel(
                 self.config.whisper_model, device="cpu", compute_type="int8"
             )
-        except Exception:
-            pass  # Will fall back to loading in worker thread
 
         # Determine project root
         if project:
@@ -133,10 +133,9 @@ class HeyDuckyApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with TabbedContent(initial="conversation"):
-            with TabPane("Source", id="source"):
-                with Horizontal(id="source-pane"):
-                    yield ProjectTree(self._project_root, id="project-tree")
-                    yield SourceView(id="source-view")
+            with TabPane("Source", id="source"), Horizontal(id="source-pane"):
+                yield ProjectTree(self._project_root, id="project-tree")
+                yield SourceView(id="source-view")
             with TabPane("Conversation", id="conversation"):
                 yield ConversationView(id="conversation-view")
             with TabPane("Variables", id="variables"):
@@ -152,10 +151,8 @@ class HeyDuckyApp(App):
         """Initialize components after mount."""
         # Apply saved theme
         if self.config.theme:
-            try:
+            with contextlib.suppress(Exception):
                 self.theme = self.config.theme
-            except Exception:
-                pass  # Fallback to default if theme not found
 
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Ready when you are. Press Space and talk to me.")
@@ -170,9 +167,7 @@ class HeyDuckyApp(App):
         # Start auto-save timer
         self._autosave_timer = self.set_interval(30, self._auto_save_state)
 
-    def on_directory_tree_file_selected(
-        self, event: ProjectTree.FileSelected
-    ) -> None:
+    def on_directory_tree_file_selected(self, event: ProjectTree.FileSelected) -> None:
         """Load selected file in source view."""
         source_view = self.query_one("#source-view", SourceView)
         source_view.load_source(str(event.path))
@@ -268,10 +263,8 @@ class HeyDuckyApp(App):
 
         # Apply theme immediately
         if result.theme:
-            try:
+            with contextlib.suppress(Exception):
                 self.theme = result.theme
-            except Exception:
-                pass
 
         conv = self.query_one("#conversation-view", ConversationView)
         conv.add_system_message("Settings saved.")
@@ -342,7 +335,9 @@ class HeyDuckyApp(App):
         """Open the remote debugger connection dialog."""
         if self._debug_session and self._dap_client:
             conv = self.query_one("#conversation-view", ConversationView)
-            conv.add_system_message("A debug session is already active. Quit and relaunch to connect to a different target.")
+            conv.add_system_message(
+                "A debug session is already active. Quit and relaunch to connect to a different target."
+            )
             return
         self.push_screen(
             RemoteConnectScreen(),
@@ -361,9 +356,7 @@ class HeyDuckyApp(App):
         self._remote_file_port = getattr(result, "file_port", None)
 
         conv = self.query_one("#conversation-view", ConversationView)
-        conv.add_system_message(
-            f"Connecting to {result.host}:{result.port} ({result.language})..."
-        )
+        conv.add_system_message(f"Connecting to {result.host}:{result.port} ({result.language})...")
         self._start_remote_debug_session()
 
     def action_export_session(self) -> None:
@@ -418,10 +411,8 @@ class HeyDuckyApp(App):
         if self._tts:
             self._tts.shutdown()
             self._tts = None
-        try:
+        with contextlib.suppress(Exception):
             AUTOSAVE_PATH.unlink(missing_ok=True)
-        except Exception:
-            pass
         await super().action_quit()
 
     def _init_components(self) -> None:
@@ -443,6 +434,7 @@ class HeyDuckyApp(App):
             # Set up git-only tool executor if no debug session pending
             if not self._target and not self._attach_host:
                 from heyducky.debugger.tool_executor import ToolExecutor
+
                 self._orchestrator._tool_executor = ToolExecutor(
                     dap_client=None,
                     project_root=str(self._project_root),
@@ -552,9 +544,7 @@ class HeyDuckyApp(App):
                 status.is_recording = False
             else:
                 status.is_recording = True
-                self._voice_level_timer = self.set_interval(
-                    0.1, self._update_voice_level
-                )
+                self._voice_level_timer = self.set_interval(0.1, self._update_voice_level)
 
     def _update_voice_level(self) -> None:
         """Poll current RMS level from voice handler and update status bar."""
@@ -591,6 +581,7 @@ class HeyDuckyApp(App):
     def _run_debug_action(self, action: str) -> None:
         """Execute a debug action in a worker thread."""
         import asyncio
+
         client = self._dap_client
         if client is None:
             return
@@ -643,7 +634,9 @@ class HeyDuckyApp(App):
                     marker = " >> " if (i + 1) == source_view.current_line else "    "
                     snippet_lines.append(f"{marker}{i + 1:4d} | {lines[i]}")
                 if end < total:
-                    snippet_lines.append(f"    ... (lines {end + 1}-{total} omitted, use read_source to see more)")
+                    snippet_lines.append(
+                        f"    ... (lines {end + 1}-{total} omitted, use read_source to see more)"
+                    )
                 parts.append("\n")
                 parts.append("\n".join(snippet_lines))
 
@@ -711,16 +704,12 @@ class HeyDuckyApp(App):
                 elif event.type == "done":
                     full_text = event.response.text if event.response else ""
                     self.call_from_thread(self._finish_ai_stream, full_text)
-                    self.call_from_thread(
-                        self._update_cost, self._orchestrator.total_cost
-                    )
+                    self.call_from_thread(self._update_cost, self._orchestrator.total_cost)
 
         try:
             asyncio.run(_stream())
         except Exception as e:
-            self.call_from_thread(
-                self._show_system_message, f"AI error: {e}"
-            )
+            self.call_from_thread(self._show_system_message, f"AI error: {e}")
             self.call_from_thread(self._set_ai_idle)
 
     def _show_user_message(self, text: str) -> None:
@@ -820,6 +809,7 @@ class HeyDuckyApp(App):
     def _start_debug_session(self) -> None:
         """Start a local debug session for the target program."""
         import asyncio
+
         from heyducky.debugger.session import DebugSession
         from heyducky.debugger.tool_executor import ToolExecutor
 
@@ -856,6 +846,7 @@ class HeyDuckyApp(App):
     def _start_remote_debug_session(self) -> None:
         """Attach to a remote debug adapter over TCP."""
         import asyncio
+
         from heyducky.debugger.session import DebugSession
         from heyducky.debugger.tool_executor import ToolExecutor
 
@@ -869,6 +860,7 @@ class HeyDuckyApp(App):
             remote_files = None
             if file_port:
                 from heyducky.remote.file_client import RemoteFileClient
+
                 remote_files = RemoteFileClient(host, file_port)
                 await remote_files.connect()
                 remote_root = await remote_files.ping()
@@ -882,9 +874,7 @@ class HeyDuckyApp(App):
                 on_state_change=self._on_debug_state_change,
                 on_output=self._on_debug_output,
             )
-            await self._debug_session.start_attach(
-                host, port, lang, path_map=self._path_map
-            )
+            await self._debug_session.start_attach(host, port, lang, path_map=self._path_map)
 
             if self._orchestrator and self._debug_session.client:
                 executor = ToolExecutor(
@@ -955,9 +945,7 @@ class HeyDuckyApp(App):
             tree = self.query_one("#project-tree", ProjectTree)
             if not tree.reveal_path(file_path):
                 conv = self.query_one("#conversation-view", ConversationView)
-                conv.add_system_message(
-                    f"Stepped into: {Path(file_path).name} (external)"
-                )
+                conv.add_system_message(f"Stepped into: {Path(file_path).name} (external)")
 
             # Switch to source tab
             self.query_one(TabbedContent).active = "source"

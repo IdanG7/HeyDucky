@@ -3,15 +3,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+import contextlib
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import ClassVar
 
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, OptionList
-from textual.widgets.option_list import Option
+from textual.widgets.option_list import Option, Separator
 
 from heyducky.chat_history import ChatHistory
 
@@ -58,7 +60,7 @@ class HistoryScreen(ModalScreen[Path | None]):
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("escape", "cancel", "Close", show=True),
         Binding("enter", "select_session", "Open", show=True),
     ]
@@ -83,10 +85,8 @@ class HistoryScreen(ModalScreen[Path | None]):
         self._sessions = self._chat_history.list_sessions()
         self._filtered_sessions = list(self._sessions)
         self._rebuild_list()
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#history-search", Input).focus()
-        except Exception:
-            pass
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Filter sessions as user types in search."""
@@ -103,9 +103,7 @@ class HistoryScreen(ModalScreen[Path | None]):
         option_list.clear_options()
 
         if not self._filtered_sessions:
-            option_list.add_option(
-                Option("No conversations found.", id="empty", disabled=True)
-            )
+            option_list.add_option(Option("No conversations found.", id="empty", disabled=True))
             return
 
         groups = self._group_by_date(self._filtered_sessions)
@@ -119,9 +117,7 @@ class HistoryScreen(ModalScreen[Path | None]):
             option_list.add_option(Separator())
 
             for s in sessions:
-                created = (
-                    s["created"][:16].replace("T", " ") if s["created"] else "?"
-                )
+                created = s["created"][:16].replace("T", " ") if s["created"] else "?"
                 count = s["message_count"]
                 preview = s["preview"][:45]
                 label = f"  {created}  ({count} msgs)  {preview}"
@@ -158,9 +154,7 @@ class HistoryScreen(ModalScreen[Path | None]):
                 ordered[key] = groups[key]
         return ordered
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """User double-clicked or pressed Enter on a session."""
         option_id = event.option_id
         if option_id and option_id != "empty":

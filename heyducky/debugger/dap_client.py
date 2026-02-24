@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import pathlib
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from heyducky.debugger.types import DAPRequest, DAPResponse, DAPEvent
 from heyducky.debugger.transport import BaseTransport, StdioTransport, TCPTransport
+from heyducky.debugger.types import DAPEvent, DAPRequest, DAPResponse
 
 
 class DAPClient:
@@ -93,14 +95,17 @@ class DAPClient:
     async def initialize(self) -> DAPResponse:
         """Send the DAP initialize request."""
         self.state = "initializing"
-        resp = await self.send_request("initialize", {
-            "clientID": "ducky",
-            "clientName": "HeyDucky",
-            "adapterID": "ducky",
-            "pathFormat": "path",
-            "linesStartAt1": True,
-            "columnsStartAt1": True,
-        })
+        resp = await self.send_request(
+            "initialize",
+            {
+                "clientID": "ducky",
+                "clientName": "HeyDucky",
+                "adapterID": "ducky",
+                "pathFormat": "path",
+                "linesStartAt1": True,
+                "columnsStartAt1": True,
+            },
+        )
         return resp
 
     async def launch(self, program: str, **kwargs) -> DAPResponse:
@@ -123,9 +128,7 @@ class DAPClient:
         self.state = "running"
         return await self.send_request("configurationDone")
 
-    async def set_breakpoint(
-        self, file: str, line: int, condition: str = ""
-    ) -> DAPResponse:
+    async def set_breakpoint(self, file: str, line: int, condition: str = "") -> DAPResponse:
         """Set a breakpoint at the given file and line."""
         lines = self.breakpoints.setdefault(file, [])
         if line not in lines:
@@ -135,10 +138,13 @@ class DAPClient:
         if condition:
             breakpoint_defs[-1]["condition"] = condition
 
-        resp = await self.send_request("setBreakpoints", {
-            "source": {"path": file},
-            "breakpoints": breakpoint_defs,
-        })
+        resp = await self.send_request(
+            "setBreakpoints",
+            {
+                "source": {"path": file},
+                "breakpoints": breakpoint_defs,
+            },
+        )
         return resp
 
     async def continue_execution(self, thread_id: int | None = None) -> DAPResponse:
@@ -176,13 +182,9 @@ class DAPClient:
 
     async def get_variables(self, variables_reference: int) -> DAPResponse:
         """Get variables for a scope."""
-        return await self.send_request(
-            "variables", {"variablesReference": variables_reference}
-        )
+        return await self.send_request("variables", {"variablesReference": variables_reference})
 
-    async def evaluate(
-        self, expression: str, frame_id: int | None = None
-    ) -> DAPResponse:
+    async def evaluate(self, expression: str, frame_id: int | None = None) -> DAPResponse:
         """Evaluate an expression."""
         args: dict[str, Any] = {"expression": expression, "context": "repl"}
         if frame_id is not None:
@@ -195,16 +197,12 @@ class DAPClient:
         Only works for sources the adapter has seen (e.g. from stack frames
         that carry a non-zero ``sourceReference``).
         """
-        return await self.send_request(
-            "source", {"sourceReference": source_reference}
-        )
+        return await self.send_request("source", {"sourceReference": source_reference})
 
     async def disconnect(self) -> None:
         """Disconnect from the debug adapter."""
-        try:
+        with contextlib.suppress(Exception):
             await self.send_request("disconnect", {"terminateDebuggee": True})
-        except Exception:
-            pass
         if self._transport:
             await self._transport.close()
         self.state = "stopped"

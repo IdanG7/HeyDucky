@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import psutil
 from PySide6.QtCore import (
@@ -44,8 +45,7 @@ class _RowDelegate(QStyledItemDelegate):
 
 
 class ProcessTableModel(QAbstractTableModel):
-
-    HEADERS = ["PID", "Name", "Command Line", "User"]
+    HEADERS: ClassVar[list[str]] = ["PID", "Name", "Command Line", "User"]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -58,21 +58,27 @@ class ProcessTableModel(QAbstractTableModel):
             try:
                 info = proc.info
                 parts = info.get("cmdline") or []
-                self._processes.append(ProcessInfo(
-                    pid=info["pid"],
-                    name=info.get("name") or "",
-                    cmdline=" ".join(parts) if parts else "",
-                    username=info.get("username") or "",
-                ))
+                self._processes.append(
+                    ProcessInfo(
+                        pid=info["pid"],
+                        name=info.get("name") or "",
+                        cmdline=" ".join(parts) if parts else "",
+                        username=info.get("username") or "",
+                    )
+                )
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
         self._processes.sort(key=lambda p: p.name.lower())
         self.endResetModel()
 
-    def rowCount(self, parent=QModelIndex()):
+    def rowCount(self, parent: QModelIndex | None = None):
+        if parent is None:
+            parent = QModelIndex()
         return len(self._processes)
 
-    def columnCount(self, parent=QModelIndex()):
+    def columnCount(self, parent: QModelIndex | None = None):
+        if parent is None:
+            parent = QModelIndex()
         return len(self.HEADERS)
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
@@ -102,7 +108,6 @@ class ProcessTableModel(QAbstractTableModel):
 
 
 class ProcessFilterModel(QSortFilterProxyModel):
-
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
         model = self.sourceModel()
         pattern = self.filterRegularExpression().pattern().lower()
@@ -117,7 +122,6 @@ class ProcessFilterModel(QSortFilterProxyModel):
 
 
 class ProcessListWidget(QWidget):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()

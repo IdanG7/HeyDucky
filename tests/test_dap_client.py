@@ -1,7 +1,9 @@
 """Tests for DAP client."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from heyducky.debugger.dap_client import DAPClient
 
 
@@ -34,6 +36,7 @@ def client(mock_transport):
 @pytest.mark.asyncio
 async def test_client_send_request(client, mock_transport):
     """Client sends request and tracks pending responses."""
+
     # Simulate response coming back
     async def fake_send(req):
         # Simulate the response arriving

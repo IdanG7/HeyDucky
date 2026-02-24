@@ -9,14 +9,33 @@ class GitCommandBlocked(Exception):
     """Raised when a git command is not in the allowlist."""
 
 
-ALLOWED_SUBCOMMANDS = frozenset({
-    "status", "diff", "log", "show", "branch", "add", "commit",
-    "stash", "blame", "shortlog", "tag", "remote", "version",
-})
+ALLOWED_SUBCOMMANDS = frozenset(
+    {
+        "status",
+        "diff",
+        "log",
+        "show",
+        "branch",
+        "add",
+        "commit",
+        "stash",
+        "blame",
+        "shortlog",
+        "tag",
+        "remote",
+        "version",
+    }
+)
 
-BLOCKED_SUBCOMMANDS = frozenset({
-    "push", "clean", "rebase", "reset", "force-push",
-})
+BLOCKED_SUBCOMMANDS = frozenset(
+    {
+        "push",
+        "clean",
+        "rebase",
+        "reset",
+        "force-push",
+    }
+)
 
 
 class GitExecutor:
@@ -58,7 +77,7 @@ class GitExecutor:
         parts = command.strip().split()
         try:
             result = subprocess.run(
-                ["git"] + parts,
+                ["git", *parts],
                 cwd=self._project_root,
                 capture_output=True,
                 text=True,

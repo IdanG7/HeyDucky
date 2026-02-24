@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from textual.widgets import RichLog
 from rich.text import Text
+from textual.widgets import RichLog
 
 
 class CallStackView(RichLog):
@@ -23,16 +23,18 @@ class CallStackView(RichLog):
 
     def on_mount(self) -> None:
         """Show initial hints."""
-        self.write(Text.from_markup(
-            "[bold]How Did We Get Here?[/bold]\n\n"
-            "[dim]I'll trace the path your code took to reach this point —\n"
-            "every function call, file, and line number.\n\n"
-            "  [bold]\u25b6[/bold] current_function  [dim]file.py:42[/dim]\n"
-            "    called_from       [dim]main.py:10[/dim]\n\n"
-            "Ask me:\n"
-            "  \"Where am I right now?\"\n"
-            "  \"How did I get to this function?\"[/dim]"
-        ))
+        self.write(
+            Text.from_markup(
+                "[bold]How Did We Get Here?[/bold]\n\n"
+                "[dim]I'll trace the path your code took to reach this point —\n"
+                "every function call, file, and line number.\n\n"
+                "  [bold]\u25b6[/bold] current_function  [dim]file.py:42[/dim]\n"
+                "    called_from       [dim]main.py:10[/dim]\n\n"
+                "Ask me:\n"
+                '  "Where am I right now?"\n'
+                '  "How did I get to this function?"[/dim]'
+            )
+        )
 
     def update_frames(self, frames: list[dict]) -> None:
         """Update the displayed stack frames.

@@ -32,11 +32,11 @@ def trim_silence(
     # Calculate RMS energy per frame
     n_frames = len(audio) // frame_length
     if n_frames == 0:
-        rms = np.sqrt(np.mean(audio ** 2))
+        rms = np.sqrt(np.mean(audio**2))
         return audio if rms > threshold else np.array([], dtype=np.float32)
 
     frames = audio[: n_frames * frame_length].reshape(n_frames, frame_length)
-    rms = np.sqrt(np.mean(frames ** 2, axis=1))
+    rms = np.sqrt(np.mean(frames**2, axis=1))
 
     # Find first and last frames above threshold
     active = np.where(rms > threshold)[0]
@@ -162,7 +162,7 @@ class VoiceHandler:
             if not self._audio_buffer:
                 return 0.0
             latest = self._audio_buffer[-1]
-        rms = float(np.sqrt(np.mean(latest ** 2)))
+        rms = float(np.sqrt(np.mean(latest**2)))
         return min(1.0, rms * 10)  # Scale up and clamp to 0-1
 
     def check_silence_timeout(self) -> bool:
@@ -184,17 +184,16 @@ class VoiceHandler:
         self, indata: np.ndarray, frames: int, time_info: object, status: sd.CallbackFlags
     ) -> None:
         """sounddevice callback - runs in audio thread."""
-        if status:
-            if status.input_overflow:
-                self._overflow_count += 1
-                if self._overflow_count >= 10:
-                    self._error = "Microphone may have disconnected"
+        if status and status.input_overflow:
+            self._overflow_count += 1
+            if self._overflow_count >= 10:
+                self._error = "Microphone may have disconnected"
         if self._is_recording:
             with self._lock:
                 self._audio_buffer.append(indata.copy())
 
             # Auto-stop silence detection
-            rms = float(np.sqrt(np.mean(indata ** 2)))
+            rms = float(np.sqrt(np.mean(indata**2)))
             if rms > self.silence_threshold:
                 self._has_speech = True
                 self._silence_frames = 0

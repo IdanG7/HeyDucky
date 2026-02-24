@@ -1,11 +1,11 @@
 """Tests for DAP message types."""
 
 from heyducky.debugger.types import (
+    DAPEvent,
     DAPRequest,
     DAPResponse,
-    DAPEvent,
-    encode_message,
     decode_messages,
+    encode_message,
 )
 
 
@@ -57,6 +57,7 @@ def test_encode_message():
     # JSON payload after header
     payload = encoded.split(b"\r\n\r\n", 1)[1]
     import json
+
     parsed = json.loads(payload)
     assert parsed["command"] == "next"
 
@@ -64,6 +65,7 @@ def test_encode_message():
 def test_decode_messages_single():
     """decode_messages extracts one complete message from buffer."""
     import json
+
     payload = json.dumps({"seq": 1, "type": "event", "event": "initialized", "body": {}})
     raw = f"Content-Length: {len(payload)}\r\n\r\n{payload}".encode()
     messages, remaining = decode_messages(raw)
@@ -74,7 +76,7 @@ def test_decode_messages_single():
 
 def test_decode_messages_partial():
     """decode_messages handles incomplete messages."""
-    partial = b"Content-Length: 100\r\n\r\n{\"partial"
+    partial = b'Content-Length: 100\r\n\r\n{"partial'
     messages, remaining = decode_messages(partial)
     assert len(messages) == 0
     assert remaining == partial
@@ -83,11 +85,11 @@ def test_decode_messages_partial():
 def test_decode_messages_multiple():
     """decode_messages extracts multiple messages from buffer."""
     import json
+
     msg1 = json.dumps({"seq": 1, "type": "event", "event": "initialized", "body": {}})
     msg2 = json.dumps({"seq": 2, "type": "event", "event": "stopped", "body": {"reason": "entry"}})
     raw = (
-        f"Content-Length: {len(msg1)}\r\n\r\n{msg1}"
-        f"Content-Length: {len(msg2)}\r\n\r\n{msg2}"
+        f"Content-Length: {len(msg1)}\r\n\r\n{msg1}Content-Length: {len(msg2)}\r\n\r\n{msg2}"
     ).encode()
     messages, remaining = decode_messages(raw)
     assert len(messages) == 2

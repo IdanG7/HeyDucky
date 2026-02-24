@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rich.text import Text
 from textual.reactive import reactive
 from textual.widgets import RichLog
-from rich.text import Text
 
 
 class SourceView(RichLog):
@@ -66,18 +66,20 @@ class SourceView(RichLog):
         """Re-render the source display."""
         self.clear()
         if not self._source_text or not self.file_path:
-            self.write(Text.from_markup(
-                "[bold]Your Code, Annotated Live[/bold]\n\n"
-                "[dim]I'll highlight exactly where your program is and what's\n"
-                "happening — breakpoints, current line, everything.\n\n"
-                "Pick a file from the tree, or just start debugging\n"
-                "and I'll open the right file automatically.\n\n"
-                "  [cyan]\u25cf[/cyan]  Breakpoint    [yellow]\u2192[/yellow]  You are here\n\n"
-                "Quick keys:\n"
-                "  [bold]t[/bold]  Jump between tree & source\n"
-                "  [bold]o[/bold]  Switch project\n"
-                "  [bold]F5[/bold] Continue  [bold]F10[/bold] Step over  [bold]F11[/bold] Step in[/dim]"
-            ))
+            self.write(
+                Text.from_markup(
+                    "[bold]Your Code, Annotated Live[/bold]\n\n"
+                    "[dim]I'll highlight exactly where your program is and what's\n"
+                    "happening — breakpoints, current line, everything.\n\n"
+                    "Pick a file from the tree, or just start debugging\n"
+                    "and I'll open the right file automatically.\n\n"
+                    "  [cyan]\u25cf[/cyan]  Breakpoint    [yellow]\u2192[/yellow]  You are here\n\n"
+                    "Quick keys:\n"
+                    "  [bold]t[/bold]  Jump between tree & source\n"
+                    "  [bold]o[/bold]  Switch project\n"
+                    "  [bold]F5[/bold] Continue  [bold]F10[/bold] Step over  [bold]F11[/bold] Step in[/dim]"
+                )
+            )
             return
 
         # Add file header

@@ -11,7 +11,6 @@ import pytest
 from heyducky.config import Config
 from heyducky.tts import TTSHandler, split_sentences
 
-
 # --- split_sentences tests ---
 
 
@@ -74,7 +73,7 @@ class TestSplitSentences:
 
     def test_whitespace_only_parts_filtered(self):
         """Whitespace-only parts are filtered out of sentences list."""
-        sentences, remainder = split_sentences("A. B. C")
+        sentences, _remainder = split_sentences("A. B. C")
         assert all(s.strip() for s in sentences)
 
 
@@ -90,10 +89,13 @@ def mock_elevenlabs():
 
     mock_stream = MagicMock()
 
-    with patch.dict(sys.modules, {
-        "elevenlabs": MagicMock(stream=mock_stream),
-        "elevenlabs.client": MagicMock(ElevenLabs=mock_client_cls),
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "elevenlabs": MagicMock(stream=mock_stream),
+            "elevenlabs.client": MagicMock(ElevenLabs=mock_client_cls),
+        },
+    ):
         yield {
             "client_cls": mock_client_cls,
             "client": mock_client,
@@ -123,11 +125,12 @@ class TestTTSHandler:
 
     def test_constructor_missing_package(self):
         """TTSHandler raises RuntimeError when elevenlabs is not installed."""
-        with patch.dict(sys.modules, {"elevenlabs.client": None}):
-            # Force the import to fail
-            with patch("builtins.__import__", side_effect=ImportError("No module")):
-                with pytest.raises(RuntimeError, match="ElevenLabs SDK is not installed"):
-                    TTSHandler(api_key="test-key")
+        with (
+            patch.dict(sys.modules, {"elevenlabs.client": None}),
+            patch("builtins.__import__", side_effect=ImportError("No module")),
+            pytest.raises(RuntimeError, match="ElevenLabs SDK is not installed"),
+        ):
+            TTSHandler(api_key="test-key")
 
     def test_speak_enqueues_text(self, mock_elevenlabs):
         """speak() puts text on the queue and playback loop processes it."""
@@ -266,13 +269,15 @@ class TestConfigTTS:
 
     def test_tts_from_dict(self):
         """Config reads TTS settings from dict."""
-        config = Config.from_dict({
-            "tts": {
-                "enabled": True,
-                "api_key": "sk-test-123",
-                "voice_id": "custom-voice",
-            },
-        })
+        config = Config.from_dict(
+            {
+                "tts": {
+                    "enabled": True,
+                    "api_key": "sk-test-123",
+                    "voice_id": "custom-voice",
+                },
+            }
+        )
         assert config.tts_enabled is True
         assert config.tts_api_key == "sk-test-123"
         assert config.tts_voice_id == "custom-voice"
@@ -323,6 +328,7 @@ class TestLazyImport:
         # split_sentences and the module-level code should work fine
         # Only the TTSHandler constructor actually needs elevenlabs
         from heyducky.tts import split_sentences as ss
+
         assert callable(ss)
 
     def test_handler_import_error_message(self):
@@ -334,14 +340,16 @@ class TestLazyImport:
                 saved_modules[key] = sys.modules.pop(key)
 
         try:
-            with patch.dict(sys.modules, {"elevenlabs.client": None}):
-                with patch(
+            with (
+                patch.dict(sys.modules, {"elevenlabs.client": None}),
+                patch(
                     "builtins.__import__",
                     side_effect=ImportError("No module named 'elevenlabs'"),
-                ):
-                    with pytest.raises(RuntimeError) as exc_info:
-                        TTSHandler(api_key="test")
-                    assert "pip install" in str(exc_info.value)
+                ),
+            ):
+                with pytest.raises(RuntimeError) as exc_info:
+                    TTSHandler(api_key="test")
+                assert "pip install" in str(exc_info.value)
         finally:
             sys.modules.update(saved_modules)
 
@@ -354,18 +362,22 @@ class TestStripMarkdown:
 
     def test_strips_bold(self):
         from heyducky.ai.prompts import _strip_markdown
+
         assert _strip_markdown("This is **bold** text") == "This is bold text"
 
     def test_strips_italic(self):
         from heyducky.ai.prompts import _strip_markdown
+
         assert _strip_markdown("This is *italic* text") == "This is italic text"
 
     def test_strips_inline_code(self):
         from heyducky.ai.prompts import _strip_markdown
+
         assert _strip_markdown("Run `pip install`") == "Run pip install"
 
     def test_strips_code_fences(self):
         from heyducky.ai.prompts import _strip_markdown
+
         text = "Here:\n```python\nprint('hi')\n```\nDone"
         result = _strip_markdown(text)
         assert "```" not in result
@@ -373,10 +385,12 @@ class TestStripMarkdown:
 
     def test_strips_headings(self):
         from heyducky.ai.prompts import _strip_markdown
+
         assert _strip_markdown("## My Heading") == "My Heading"
 
     def test_humanize_includes_markdown_strip(self):
         from heyducky.ai.prompts import humanize_response
+
         result = humanize_response("I will **certainly** do that")
         # "Certainly" removed, "I will" -> "I'll", **bold** stripped
         assert "**" not in result

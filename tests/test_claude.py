@@ -1,7 +1,9 @@
 """Tests for Claude provider (uses mocked API)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from heyducky.ai.claude import ClaudeProvider
 from heyducky.ai.provider import AIResponse
 

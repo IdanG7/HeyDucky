@@ -1,7 +1,9 @@
 """Tests for DAP transport layer."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from heyducky.debugger.transport import StdioTransport
 from heyducky.debugger.types import DAPRequest
 

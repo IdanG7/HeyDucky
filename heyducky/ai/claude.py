@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
 
@@ -77,9 +77,8 @@ class ClaudeProvider(AIProvider):
 
         async with self._client.messages.stream(**kwargs) as stream:
             async for event in stream:
-                if event.type == "content_block_delta":
-                    if event.delta.type == "text_delta":
-                        yield StreamEvent(type="text", text=event.delta.text)
+                if event.type == "content_block_delta" and event.delta.type == "text_delta":
+                    yield StreamEvent(type="text", text=event.delta.text)
 
             # After stream completes, get the full message
             message = await stream.get_final_message()

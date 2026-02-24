@@ -25,7 +25,13 @@ from PySide6.QtWidgets import (
 from heyducky.remote.agent import get_adapter_command
 from heyducky.remote.gui.process_list import ProcessListWidget
 from heyducky.remote.gui.styles import (
-    BLUE, GREEN, OVERLAY0, OVERLAY1, SURFACE1, SUBTEXT0, TEXT, YELLOW, RED,
+    BLUE,
+    GREEN,
+    OVERLAY0,
+    OVERLAY1,
+    RED,
+    SURFACE1,
+    YELLOW,
 )
 from heyducky.remote.gui.widgets import (
     GradientHeader,
@@ -42,10 +48,10 @@ class _SignalBridge(QObject):
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self, loop: asyncio.AbstractEventLoop, parent=None):
         super().__init__(parent)
         self._loop = loop
+        self._background_tasks: set = set()
         self._relay = None
         self._file_server = None
         self._bridge = _SignalBridge()
@@ -266,7 +272,9 @@ class MainWindow(QMainWindow):
         proc = self._process_list.selected_process()
         if not proc or self._attached:
             return
-        self._do_attach(proc.pid, proc.name, self._language_combo.currentData(), self._port_spin.value())
+        self._do_attach(
+            proc.pid, proc.name, self._language_combo.currentData(), self._port_spin.value()
+        )
 
     @Slot()
     def _on_detach_clicked(self) -> None:
@@ -291,6 +299,7 @@ class MainWindow(QMainWindow):
 
     def _show_about(self) -> None:
         from PySide6.QtWidgets import QMessageBox
+
         QMessageBox.about(
             self,
             "HeyDucky Remote",
@@ -319,18 +328,21 @@ class MainWindow(QMainWindow):
         self._set_status("waiting", "Starting\u2026")
         self._append_log(f"Attaching to PID {pid} ({name}) via {language}\u2026")
 
-        asyncio.ensure_future(
+        task = asyncio.ensure_future(
             self._async_attach(pid, language, adapter_cmd, port), loop=self._loop
         )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _async_attach(
         self, pid: int, language: str, adapter_cmd: list[str], port: int
     ) -> None:
-        from heyducky.remote.relay import DAPRelay
         from heyducky.remote.file_server import FileServer
+        from heyducky.remote.relay import DAPRelay
 
         try:
             import psutil as _psutil
+
             try:
                 project_root = _psutil.Process(pid).cwd()
             except Exception:
@@ -338,9 +350,7 @@ class MainWindow(QMainWindow):
 
             def on_relay_message(direction: str, msg: dict) -> None:
                 if direction == "status":
-                    self._bridge.status_changed.emit(
-                        msg.get("event", ""), msg.get("peer", "")
-                    )
+                    self._bridge.status_changed.emit(msg.get("event", ""), msg.get("peer", ""))
                     return
                 msg_type = msg.get("type", "")
                 if msg_type == "event":
@@ -381,7 +391,9 @@ class MainWindow(QMainWindow):
 
     def _do_detach(self) -> None:
         self._append_log("Detaching\u2026")
-        asyncio.ensure_future(self._async_detach(), loop=self._loop)
+        task = asyncio.ensure_future(self._async_detach(), loop=self._loop)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     async def _async_detach(self) -> None:
         if self._relay:
@@ -407,7 +419,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         if self._attached:
-            asyncio.ensure_future(self._async_detach(), loop=self._loop)
+            task = asyncio.ensure_future(self._async_detach(), loop=self._loop)
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
         super().closeEvent(event)
 
 
