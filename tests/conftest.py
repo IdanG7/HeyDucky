@@ -9,7 +9,6 @@ import pytest
 
 from heyducky.config import Config
 
-
 # -- Config -------------------------------------------------------------------
 
 
