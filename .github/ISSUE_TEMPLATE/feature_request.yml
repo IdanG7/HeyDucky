@@ -1,0 +1,48 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for HeyDucky? We'd love to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What problem does this solve, or what workflow does it improve?
+      placeholder: "I often need to ... but currently HeyDucky doesn't ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you've thought about?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Voice input / STT
+        - AI / Claude integration
+        - Debugger / DAP
+        - Remote debugging
+        - TUI / interface
+        - Text-to-speech
+        - Configuration
+        - CLI
+        - Other
+    validations:
+      required: true

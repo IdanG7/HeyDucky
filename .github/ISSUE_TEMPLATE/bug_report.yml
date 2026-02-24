@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report something that isn't working correctly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I press Space to talk, the app crashes with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      placeholder: |
+        1. Run `ducky --project ~/myapp`
+        2. Press Space
+        3. Say "look at main.py"
+        4. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output / traceback
+      description: Paste any error messages or tracebacks here.
+      render: shell
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode?
+      options:
+        - Chat mode (`ducky`)
+        - Debug mode (`ducky script.py`)
+        - Remote debug (`ducky --attach`)
+        - Remote agent (`ducky-remote`)
+        - Setup wizard (`ducky --setup`)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 15.2 / Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.1"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: HeyDucky version
+      description: Run `pip show heyducky` to find this.
+      placeholder: "0.1.0"
